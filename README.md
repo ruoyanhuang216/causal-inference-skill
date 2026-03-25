@@ -14,7 +14,7 @@ When you invoke `/causal-inference`, the skill starts an interactive conversatio
 | **2. Data & Assignment** | Characterize your data structure, treatment assignment mechanism, timing, and confounders |
 | **3. Method Selection** | Navigate a decision tree to find the right method(s) for your setting |
 | **4. Assumption Diagnostics** | Walk through method-specific checklists to validate your identification strategy |
-| **5. Implementation** | Get code templates (R/Python/Stata), robustness checks, and reporting guidance |
+| **5. Implementation** | Get Python code templates, robustness checks, and reporting guidance |
 
 ## Methods Covered
 
@@ -104,7 +104,7 @@ skills/causal-inference/
 ├── SKILL.md               # Main skill: interactive workflow + decision tree
 ├── methods-reference.md   # Detailed reference for all methods
 ├── diagnostics.md         # Assumption testing checklists per method
-└── code-templates.md      # R, Python, and Stata code templates
+└── code-templates.md      # Python code templates
 ```
 
 | File | Purpose | Contents |
@@ -112,13 +112,13 @@ skills/causal-inference/
 | `SKILL.md` | Entry point — loaded when skill is invoked | 5-phase interactive workflow, method decision tree, special topics |
 | `methods-reference.md` | Deep reference — loaded on demand | Definitions, assumptions, estimands, key references for 30+ methods |
 | `diagnostics.md` | Validation checklists — loaded during Phase 4 | Per-method diagnostic tests, robustness checks, sensitivity analysis |
-| `code-templates.md` | Implementation — loaded during Phase 5 | Starter code in R/Python/Stata, package recommendations |
+| `code-templates.md` | Implementation — loaded during Phase 5 | Python code templates, package recommendations |
 
 ## Contributing
 
 Contributions are welcome! Some areas where help is appreciated:
 
-- Additional code templates (Julia, SAS)
+- Additional code templates for specialized methods
 - More example sessions covering different research scenarios
 - Translations of the skill to other languages
 - Additional methods or updated references

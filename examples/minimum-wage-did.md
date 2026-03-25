@@ -100,59 +100,60 @@ This example shows how the `/causal-inference` skill guides a researcher studyin
 
 ### Phase 5: Implementation
 
-**Skill provides code (R):**
+**Skill provides code (Python):**
 
-```r
-library(did)
-library(fixest)
-library(ggplot2)
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+import pyfixest as pf
+from csdid import att_gt
 
 # ── Data Preparation ──
-# Ensure: unit_id (county), time (quarter), first_treat (quarter of first MW increase; 0 for never-treated), log_emp (outcome)
+# Ensure: county_id, quarter, first_treat_quarter (0 for never-treated), log_emp
 
-# ── Primary: Callaway & Sant'Anna ──
-cs_out <- att_gt(
-  yname = "log_emp",
-  tname = "quarter",
-  idname = "county_id",
-  gname = "first_treat_quarter",  # 0 for never-treated
-  data = df,
-  control_group = "nevertreated",
-  est_method = "dr",  # doubly robust
-  xformla = ~ state_gdp_growth + pop_density,  # optional covariates
-  clustervars = "state_id"  # cluster at state level (treatment level)
+# ═══════════════════════════════════════════
+# Primary: Callaway & Sant'Anna
+# ═══════════════════════════════════════════
+cs_out = att_gt(
+    data=df,
+    yname='log_emp',
+    tname='quarter',
+    idname='county_id',
+    gname='first_treat_quarter',  # 0 for never-treated
+    control_group='nevertreated',
+    est_method='dr'  # doubly robust
 )
+print(cs_out.summary())
 
 # Overall ATT
-agg_simple <- aggte(cs_out, type = "simple")
-summary(agg_simple)
+agg_simple = cs_out.aggregate('simple')
+print(agg_simple.summary())
 
 # Event study (dynamic effects)
-agg_dynamic <- aggte(cs_out, type = "dynamic", min_e = -8, max_e = 12)
-ggdid(agg_dynamic) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  labs(title = "Event Study: Minimum Wage and Restaurant Employment",
-       x = "Quarters Relative to MW Increase",
-       y = "ATT (log employment)")
+agg_dynamic = cs_out.aggregate('dynamic')
+agg_dynamic.plot()
+plt.axhline(y=0, linestyle='--', color='gray')
+plt.title('Event Study: Minimum Wage and Restaurant Employment')
+plt.xlabel('Quarters Relative to MW Increase')
+plt.ylabel('ATT (log employment)')
+plt.show()
 
-# ── Robustness: Sun & Abraham via fixest ──
-sa_model <- feols(log_emp ~ sunab(first_treat_quarter, quarter) | county_id + quarter,
-                  data = df, cluster = ~state_id)
-iplot(sa_model, main = "Sun & Abraham Event Study")
+# ═══════════════════════════════════════════
+# Robustness: Sun & Abraham via pyfixest
+# ═══════════════════════════════════════════
+sa_model = pf.feols('log_emp ~ sunab(first_treat_quarter, quarter) | county_id + quarter',
+                     data=df, vcov={'CRV1': 'state_id'})
+print(sa_model.summary())
+pf.iplot(sa_model)
+plt.title('Sun & Abraham Event Study')
+plt.show()
 
-# ── Comparison: Standard TWFE (report but flag limitations) ──
-twfe <- feols(log_emp ~ treat_post | county_id + quarter, data = df, cluster = ~state_id)
-summary(twfe)
-
-# ── Goodman-Bacon Decomposition ──
-library(bacondecomp)
-bacon_out <- bacon(log_emp ~ treat_post, data = df_state_level,
-                   id_var = "state_id", time_var = "quarter")
-ggplot(bacon_out) +
-  aes(x = weight, y = estimate, color = type) +
-  geom_point(size = 3) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  labs(title = "Goodman-Bacon Decomposition")
+# ═══════════════════════════════════════════
+# Comparison: Standard TWFE (report but flag limitations)
+# ═══════════════════════════════════════════
+twfe = pf.feols('log_emp ~ treat_post | county_id + quarter',
+                data=df, vcov={'CRV1': 'state_id'})
+print(twfe.summary())
 ```
 
 > **Reporting checklist:**

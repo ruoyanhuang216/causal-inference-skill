@@ -69,123 +69,126 @@ This example shows the skill guiding a researcher who has experimental data and 
 
 ### Phase 5: Implementation
 
-```r
-library(grf)
-library(DoubleML)
-library(mlr3)
-library(mlr3learners)
-library(ggplot2)
+```python
+from econml.dml import CausalForestDML
+from doubleml import DoubleMLPLR, DoubleMLData
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 # ── Setup ──
-covariates <- c("age", "education", "prior_earnings", "race",
-                "married", "hispanic", "nodegree")
-X <- as.matrix(df[, covariates])
-Y <- df$earnings
-W <- df$treatment
+covariates = ['age', 'education', 'prior_earnings', 'race',
+              'married', 'hispanic', 'nodegree']
+X = df[covariates].values
+Y = df['earnings'].values
+T = df['treatment'].values
 
 # ═══════════════════════════════════════════
 # Step 1: ATE via DML (benchmark)
 # ═══════════════════════════════════════════
-dml_data <- DoubleMLData$new(df, y_col = "earnings", d_cols = "treatment",
-                              x_cols = covariates)
+dml_data = DoubleMLData(df, y_col='earnings', d_cols='treatment',
+                         x_cols=covariates)
 
-ml_l <- lrn("regr.ranger", num.trees = 500)
-ml_m <- lrn("classif.ranger", num.trees = 500)
+ml_l = RandomForestRegressor(n_estimators=500, max_depth=5, random_state=42)
+ml_m = RandomForestClassifier(n_estimators=500, max_depth=5, random_state=42)
 
-dml_plr <- DoubleMLPLR$new(dml_data, ml_l = ml_l, ml_m = ml_m, n_folds = 5)
-dml_plr$fit()
-cat("DML ATE estimate:\n")
-print(dml_plr$summary())
+dml_plr = DoubleMLPLR(dml_data, ml_l=ml_l, ml_m=ml_m, n_folds=5)
+dml_plr.fit()
+print('DML ATE estimate:')
+print(dml_plr.summary)
 
 # Simple difference-in-means for comparison
-ate_simple <- mean(Y[W == 1]) - mean(Y[W == 0])
-cat(sprintf("Simple DiM: %.2f\n", ate_simple))
+ate_simple = Y[T == 1].mean() - Y[T == 0].mean()
+print(f'Simple DiM: {ate_simple:.2f}')
 
 # ═══════════════════════════════════════════
 # Step 2: Causal Forest for CATE
 # ═══════════════════════════════════════════
-cf <- causal_forest(X, Y, W,
-                    num.trees = 4000,
-                    honesty = TRUE,
-                    tune.parameters = "all")
+cf = CausalForestDML(
+    model_y='auto', model_t='auto',
+    n_estimators=4000,
+    min_samples_leaf=5,
+    random_state=42,
+    cv=5
+)
+cf.fit(Y=Y, T=T, X=X)
 
-# ── ATE from forest ──
-ate_cf <- average_treatment_effect(cf, target.sample = "all")
-cat(sprintf("Causal Forest ATE: %.2f (SE: %.2f)\n", ate_cf[1], ate_cf[2]))
-
-# ═══════════════════════════════════════════
-# Step 3: Calibration test
-# ═══════════════════════════════════════════
-cal <- test_calibration(cf)
-print(cal)
-# "mean.forest.prediction" should be significant and coef ~ 1
-# "differential.forest.prediction" significant → heterogeneity detected
+# ATE from forest
+ate_inf = cf.ate_inference(X=X)
+print(f'Causal Forest ATE: {ate_inf.mean_point:.2f} (SE: {ate_inf.stderr_mean:.2f})')
+print(f'95% CI: [{ate_inf.conf_int_mean()[0][0]:.2f}, {ate_inf.conf_int_mean()[0][1]:.2f}]')
 
 # ═══════════════════════════════════════════
-# Step 4: Variable importance
+# Step 3: CATE predictions
 # ═══════════════════════════════════════════
-varimp <- variable_importance(cf)
-varimp_df <- data.frame(variable = covariates, importance = as.numeric(varimp))
-varimp_df <- varimp_df[order(-varimp_df$importance), ]
+cate = cf.effect(X=X)
+cate_inf = cf.effect_inference(X=X)
 
-ggplot(varimp_df, aes(x = reorder(variable, importance), y = importance)) +
-  geom_col() + coord_flip() +
-  labs(title = "Variable Importance for Treatment Effect Heterogeneity",
-       x = "", y = "Importance")
+df['cate'] = cate
+df['cate_lower'] = cate_inf.conf_int()[0]
+df['cate_upper'] = cate_inf.conf_int()[1]
 
 # ═══════════════════════════════════════════
-# Step 5: Best Linear Projection
+# Step 4: Feature importance via SHAP
 # ═══════════════════════════════════════════
-blp <- best_linear_projection(cf, X)
-print(blp)
-# Shows which covariates linearly predict larger/smaller treatment effects
+shap_values = cf.shap_values(X)
+shap_importance = np.abs(shap_values['Y0']).mean(axis=0)
+importance_df = pd.DataFrame({'variable': covariates, 'importance': shap_importance})
+importance_df = importance_df.sort_values('importance', ascending=True)
+
+plt.figure(figsize=(8, 5))
+plt.barh(importance_df['variable'], importance_df['importance'])
+plt.xlabel('Mean |SHAP value|')
+plt.title('Variable Importance for Treatment Effect Heterogeneity')
+plt.tight_layout()
+plt.show()
 
 # ═══════════════════════════════════════════
-# Step 6: CLAN — Characterize subgroups
+# Step 5: CLAN — Characterize subgroups by CATE quintile
 # ═══════════════════════════════════════════
-cate_pred <- predict(cf)$predictions
+df['cate_quintile'] = pd.qcut(cate, q=5, labels=[1, 2, 3, 4, 5])
 
-# Split into quintiles of predicted CATE
-df$cate_quintile <- cut(cate_pred, breaks = quantile(cate_pred, probs = 0:5/5),
-                        labels = 1:5, include.lowest = TRUE)
+# GATE (Group Average Treatment Effects) by quintile
+print('\nGroup Average Treatment Effects by CATE Quintile:')
+for q in range(1, 6):
+    mask = df['cate_quintile'] == q
+    gate_inf = cf.ate_inference(X=X[mask])
+    print(f'  Quintile {q}: GATE = {gate_inf.mean_point:.2f} '
+          f'(SE: {gate_inf.stderr_mean:.2f}), N = {mask.sum()}')
 
 # Average characteristics by quintile
-for (v in covariates) {
-  cat(sprintf("\n%s by CATE quintile:\n", v))
-  print(tapply(df[[v]], df$cate_quintile, mean))
-}
-
-# Average treatment effect by quintile (using forest's doubly-robust scores)
-for (q in 1:5) {
-  ate_q <- average_treatment_effect(cf, target.sample = "all",
-                                     subset = df$cate_quintile == q)
-  cat(sprintf("Quintile %d: GATE = %.2f (%.2f)\n", q, ate_q[1], ate_q[2]))
-}
+print('\nSubgroup Characteristics by CATE Quintile:')
+for cov in covariates:
+    means = df.groupby('cate_quintile')[cov].mean()
+    print(f'\n  {cov}:')
+    for q, m in means.items():
+        print(f'    Q{q}: {m:.3f}')
 
 # ═══════════════════════════════════════════
-# Step 7: Distribution of treatment effects
+# Step 6: Distribution of treatment effects
 # ═══════════════════════════════════════════
-ggplot(data.frame(cate = cate_pred), aes(x = cate)) +
-  geom_histogram(bins = 50, fill = "steelblue", alpha = 0.7) +
-  geom_vline(xintercept = ate_cf[1], linetype = "dashed", color = "red") +
-  labs(title = "Distribution of Predicted Treatment Effects",
-       x = "Conditional Average Treatment Effect (CATE)",
-       y = "Count") +
-  annotate("text", x = ate_cf[1], y = Inf, label = sprintf("ATE = %.0f", ate_cf[1]),
-           vjust = 2, hjust = -0.1, color = "red")
+plt.figure(figsize=(8, 5))
+plt.hist(cate, bins=50, color='steelblue', alpha=0.7, edgecolor='white')
+plt.axvline(x=ate_inf.mean_point, color='red', linestyle='--',
+            label=f'ATE = {ate_inf.mean_point:.0f}')
+plt.xlabel('Conditional Average Treatment Effect (CATE)')
+plt.ylabel('Count')
+plt.title('Distribution of Predicted Treatment Effects')
+plt.legend()
+plt.show()
 
 # ═══════════════════════════════════════════
-# Optional: Optimal policy learning
+# Optional: Compare with Meta-Learners
 # ═══════════════════════════════════════════
-library(policytree)
+from econml.metalearners import XLearner
+from sklearn.ensemble import GradientBoostingRegressor
 
-# Train a shallow policy tree (interpretable)
-policy <- policy_tree(X, cf$W.hat, predict(cf)$predictions, depth = 2)
-plot(policy)
-
-# Who should be treated under optimal policy?
-df$optimal_treat <- predict(policy, X)
-table(df$optimal_treat)
+x_learner = XLearner(models=GradientBoostingRegressor(n_estimators=200))
+x_learner.fit(Y, T, X=X)
+cate_x = x_learner.effect(X)
+print(f'\nX-Learner ATE: {cate_x.mean():.2f}')
+print(f'Correlation with Causal Forest CATE: {np.corrcoef(cate, cate_x)[0,1]:.3f}')
 ```
 
 > **Reporting recommendations:**

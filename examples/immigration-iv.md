@@ -60,9 +60,10 @@ This example demonstrates the skill guiding a researcher using a Bartik/shift-sh
 
 ### Phase 5: Implementation
 
-```r
-library(fixest)
-library(bartik.weight)  # for Rotemberg weights
+```python
+import pyfixest as pf
+import pandas as pd
+import numpy as np
 
 # ── Data structure ──
 # df: CZ-decade panel
@@ -71,45 +72,47 @@ library(bartik.weight)  # for Rotemberg weights
 # wage_growth: change in log native wages
 
 # ── OLS (biased baseline) ──
-ols <- feols(wage_growth ~ immig_share | cz + decade, data = df,
-             cluster = ~state)
-summary(ols)
+ols = pf.feols('wage_growth ~ immig_share | cz + decade',
+               data=df, vcov={'CRV1': 'state'})
+print('OLS:')
+print(ols.summary())
 
 # ── First stage ──
-first_stage <- feols(immig_share ~ bartik_iv | cz + decade, data = df,
-                     cluster = ~state)
-summary(first_stage)
-fitstat(first_stage, type = "ivf")  # F-statistic
+first_stage = pf.feols('immig_share ~ bartik_iv | cz + decade',
+                        data=df, vcov={'CRV1': 'state'})
+print('First Stage:')
+print(first_stage.summary())
 
 # ── 2SLS ──
-iv_model <- feols(wage_growth ~ 1 | cz + decade | immig_share ~ bartik_iv,
-                  data = df, cluster = ~state)
-summary(iv_model)
+iv_model = pf.feols('wage_growth ~ 1 | cz + decade | immig_share ~ bartik_iv',
+                     data=df, vcov={'CRV1': 'state'})
+print('IV (2SLS):')
+print(iv_model.summary())
 
 # ── Reduced form ──
-reduced_form <- feols(wage_growth ~ bartik_iv | cz + decade, data = df,
-                      cluster = ~state)
-summary(reduced_form)
+reduced_form = pf.feols('wage_growth ~ bartik_iv | cz + decade',
+                         data=df, vcov={'CRV1': 'state'})
+print('Reduced Form:')
+print(reduced_form.summary())
 
 # ── Pre-trend test (instrument should not predict past wage growth) ──
-pretrend <- feols(lag_wage_growth ~ bartik_iv | cz + decade, data = df,
-                  cluster = ~state)
-summary(pretrend)  # Should be insignificant
-
-# ── Rotemberg weights (which origin countries drive the result?) ──
-# Using BHJ framework: estimate at the shock level
-# Aggregate to origin-country-decade level for shock-level analysis
+pretrend = pf.feols('lag_wage_growth ~ bartik_iv | cz + decade',
+                     data=df, vcov={'CRV1': 'state'})
+print('Pre-trend test (should be insignificant):')
+print(pretrend.summary())
 
 # ── Leave-one-out: drop each top-5 origin country ──
-top_origins <- c("MEX", "CHN", "IND", "PHL", "VNM")
-for (origin in top_origins) {
-  df_loo <- df  # recalculate bartik_iv excluding this origin
-  # ... (recalculate instrument)
-  iv_loo <- feols(wage_growth ~ 1 | cz + decade | immig_share ~ bartik_iv_loo,
-                  data = df_loo, cluster = ~state)
-  cat(sprintf("Dropping %s: Estimate = %.4f (%.4f)\n",
-              origin, coef(iv_loo)[1], se(iv_loo)[1]))
-}
+top_origins = ['MEX', 'CHN', 'IND', 'PHL', 'VNM']
+for origin in top_origins:
+    # Recalculate bartik_iv excluding this origin country
+    # df_loo['bartik_iv_loo'] = ... (sum of share * shock excluding this origin)
+    df_loo = df.copy()
+    df_loo['bartik_iv_loo'] = df[f'bartik_excl_{origin}']  # pre-computed
+    iv_loo = pf.feols('wage_growth ~ 1 | cz + decade | immig_share ~ bartik_iv_loo',
+                       data=df_loo, vcov={'CRV1': 'state'})
+    coef = iv_loo.coef().values[0]
+    se = iv_loo.se().values[0]
+    print(f'Dropping {origin}: Estimate = {coef:.4f} ({se:.4f})')
 ```
 
 > **Reporting recommendations:**

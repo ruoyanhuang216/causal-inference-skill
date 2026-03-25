@@ -69,57 +69,55 @@ This example shows how the skill guides a researcher exploiting Maimonides' Rule
 
 ### Phase 5: Implementation
 
-```r
-library(rdrobust)
-library(rddensity)
+```python
+from rdrobust import rdrobust, rdplot
+from rddensity import rddensity
+import pandas as pd
 
 # Center running variable at cutoff
-df$enroll_centered <- df$enrollment - 40
-df$above_cutoff <- as.numeric(df$enrollment > 40)
+df['enroll_centered'] = df['enrollment'] - 40
+df['above_cutoff'] = (df['enrollment'] > 40).astype(int)
 
 # ── Fuzzy RD estimate ──
-frd <- rdrobust(y = df$test_scores, x = df$enroll_centered,
-                fuzzy = df$class_size, c = 0)
-summary(frd)
+frd = rdrobust(Y=df['test_scores'], X=df['enroll_centered'],
+               fuzzy=df['class_size'], c=0)
+print(frd)
 
 # ── First stage: class size discontinuity ──
-first_stage <- rdrobust(y = df$class_size, x = df$enroll_centered, c = 0)
-summary(first_stage)
+first_stage = rdrobust(Y=df['class_size'], X=df['enroll_centered'], c=0)
+print('First Stage:')
+print(first_stage)
 
 # ── Reduced form: test score discontinuity ──
-reduced_form <- rdrobust(y = df$test_scores, x = df$enroll_centered, c = 0)
-summary(reduced_form)
+reduced_form = rdrobust(Y=df['test_scores'], X=df['enroll_centered'], c=0)
+print('Reduced Form:')
+print(reduced_form)
 
 # ── Plots ──
-rdplot(y = df$test_scores, x = df$enroll_centered, c = 0,
-       title = "Test Scores at Enrollment Cutoff",
-       x.label = "Enrollment - 40",
-       y.label = "Average Test Score")
+rdplot(y=df['test_scores'], x=df['enroll_centered'], c=0,
+       title='Test Scores at Enrollment Cutoff',
+       x_label='Enrollment - 40', y_label='Average Test Score')
 
-rdplot(y = df$class_size, x = df$enroll_centered, c = 0,
-       title = "First Stage: Class Size at Enrollment Cutoff",
-       x.label = "Enrollment - 40",
-       y.label = "Average Class Size")
+rdplot(y=df['class_size'], x=df['enroll_centered'], c=0,
+       title='First Stage: Class Size at Enrollment Cutoff',
+       x_label='Enrollment - 40', y_label='Average Class Size')
 
 # ── Manipulation test ──
-dens <- rddensity(X = df$enroll_centered, c = 0)
-summary(dens)
-rdplotdensity(dens, df$enroll_centered,
-              title = "McCrary Density Test at Cutoff")
+density_test = rddensity(X=df['enroll_centered'], c=0)
+print(density_test)
 
 # ── Covariate balance ──
-covariates <- c("pct_disadvantaged", "teacher_experience", "school_age")
-for (cov in covariates) {
-  cat("\n===", cov, "===\n")
-  print(summary(rdrobust(y = df[[cov]], x = df$enroll_centered, c = 0)))
-}
+for cov in ['pct_disadvantaged', 'teacher_experience', 'school_age']:
+    print(f'\n=== {cov} ===')
+    print(rdrobust(Y=df[cov], X=df['enroll_centered'], c=0))
 
 # ── Bandwidth sensitivity ──
-opt_bw <- frd$bws[1, 1]
-for (mult in c(0.5, 0.75, 1, 1.25, 1.5, 2)) {
-  est <- rdrobust(y = df$test_scores, x = df$enroll_centered,
-                  fuzzy = df$class_size, c = 0, h = opt_bw * mult)
-  cat(sprintf("BW=%.1f (%.1fx): Estimate=%.3f, SE=%.3f, p=%.3f\n",
-              opt_bw * mult, mult, est$coef[1], est$se[3], est$pv[3]))
-}
+opt_bw = frd.bws.values[0, 0]
+for mult in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]:
+    est = rdrobust(Y=df['test_scores'], X=df['enroll_centered'],
+                   fuzzy=df['class_size'], c=0, h=opt_bw * mult)
+    coef = est.coef.values[0]
+    se = est.se.values[2]
+    pv = est.pv.values[2]
+    print(f'BW={opt_bw*mult:.1f} ({mult:.2f}x): Estimate={coef:.3f}, SE={se:.3f}, p={pv:.3f}')
 ```

@@ -67,83 +67,116 @@ This example replicates the classic Abadie, Diamond & Hainmueller (2010) analysi
 
 ### Phase 5: Implementation
 
-```r
-library(Synth)
-library(augsynth)
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.optimize import minimize
 
-# ── Classic Synthetic Control ──
-dataprep_out <- dataprep(
-  foo = df,
-  predictors = c("lnincome", "beer", "age15to24", "retprice"),
-  predictors.op = "mean",
-  special.predictors = list(
-    list("cigsale", 1975, "mean"),
-    list("cigsale", 1980, "mean"),
-    list("cigsale", 1988, "mean")
-  ),
-  dependent = "cigsale",
-  unit.variable = "state_id",
-  time.variable = "year",
-  treatment.identifier = 3,  # California
-  controls.identifier = donor_ids,
-  time.predictors.prior = 1970:1988,
-  time.optimize.ssr = 1970:1988,
-  time.plot = 1970:2000
-)
+# ── Data: state-year panel ──
+# df columns: state_id, year, cigsale, lnincome, beer, age15to24, retprice, treat
+# California = state_id 3, treatment year = 1988
 
-synth_out <- synth(dataprep_out)
+treated_id = 3
+treat_year = 1988
+donor_ids = [s for s in df['state_id'].unique() if s != treated_id]
+years = sorted(df['year'].unique())
+pre_years = [y for y in years if y < treat_year]
+T0 = len(pre_years)
+
+# Reshape to (units x time) matrix
+outcome_matrix = df.pivot(index='state_id', columns='year', values='cigsale')
+Y_treat = outcome_matrix.loc[treated_id].values
+Y_donors = outcome_matrix.loc[donor_ids].values
+n_donors = len(donor_ids)
+
+# ── Classic Synthetic Control: minimize pre-treatment MSPE ──
+def objective(w):
+    synthetic = w @ Y_donors[:, :T0]
+    return np.sum((Y_treat[:T0] - synthetic) ** 2)
+
+constraints = [{'type': 'eq', 'fun': lambda w: np.sum(w) - 1}]
+bounds = [(0, 1)] * n_donors
+w0 = np.ones(n_donors) / n_donors
+
+result = minimize(objective, w0, method='SLSQP', bounds=bounds, constraints=constraints)
+weights = result.x
+synthetic_all = weights @ Y_donors
 
 # ── Path plot (actual vs synthetic) ──
-path.plot(synth_out, dataprep_out,
-          Ylab = "Per-Capita Cigarette Sales (packs)",
-          Xlab = "Year",
-          Legend = c("California", "Synthetic California"),
-          Main = "California vs. Synthetic California")
-abline(v = 1988, lty = 2)
+plt.figure(figsize=(10, 6))
+plt.plot(years, Y_treat, 'b-', linewidth=2, label='California')
+plt.plot(years, synthetic_all, 'r--', linewidth=2, label='Synthetic California')
+plt.axvline(x=treat_year, color='gray', linestyle=':', label='Proposition 99')
+plt.xlabel('Year')
+plt.ylabel('Per-Capita Cigarette Sales (packs)')
+plt.title('California vs. Synthetic California')
+plt.legend()
+plt.show()
 
 # ── Gap plot (treatment effect over time) ──
-gaps.plot(synth_out, dataprep_out,
-          Ylab = "Gap in Cigarette Sales",
-          Xlab = "Year",
-          Main = "Effect of Proposition 99")
-abline(v = 1988, lty = 2)
+gap = Y_treat - synthetic_all
+plt.figure(figsize=(10, 6))
+plt.plot(years, gap, 'k-', linewidth=2)
+plt.axvline(x=treat_year, color='gray', linestyle=':')
+plt.axhline(y=0, color='gray', linestyle='--')
+plt.xlabel('Year')
+plt.ylabel('Gap in Cigarette Sales')
+plt.title('Effect of Proposition 99')
+plt.show()
 
 # ── Donor weights ──
-synth.tables <- synth.tab(dataprep.res = dataprep_out, synth.res = synth_out)
-print(synth.tables$tab.w)  # which states contribute to synthetic CA?
-print(synth.tables$tab.pred)  # predictor balance
+print('Donor weights (non-zero):')
+for sid, w in sorted(zip(donor_ids, weights), key=lambda x: -x[1]):
+    if w > 0.01:
+        print(f'  State {sid}: {w:.3f}')
 
 # ── Pre-treatment RMSPE ──
-pre_gaps <- dataprep_out$Y1plot[1:19] - (dataprep_out$Y0plot[1:19, ] %*% synth_out$solution.w)
-rmspe_pre <- sqrt(mean(pre_gaps^2))
-cat(sprintf("Pre-treatment RMSPE: %.2f\n", rmspe_pre))
+rmspe_pre = np.sqrt(np.mean((Y_treat[:T0] - synthetic_all[:T0]) ** 2))
+print(f'Pre-treatment RMSPE: {rmspe_pre:.2f}')
 
 # ── Placebo tests (permutation inference) ──
-# Run SCM for each donor state
-placebo_gaps <- list()
-for (donor in donor_ids) {
-  tryCatch({
-    dp <- dataprep(foo = df, ..., treatment.identifier = donor,
-                   controls.identifier = setdiff(c(3, donor_ids), donor), ...)
-    sp <- synth(dp)
-    placebo_gaps[[as.character(donor)]] <- dp$Y1plot - (dp$Y0plot %*% sp$solution.w)
-  }, error = function(e) NULL)
-}
-# Plot all placebo gaps + California gap
-# Calculate post/pre RMSPE ratios and rank California
+placebo_gaps = {}
+for i, donor in enumerate(donor_ids):
+    Y_placebo = Y_donors[i]
+    Y_placebo_donors = np.vstack([Y_treat.reshape(1, -1),
+                                   np.delete(Y_donors, i, axis=0)])
 
-# ── Augmented SCM (if pre-fit is imperfect) ──
-ascm_out <- augsynth(cigsale ~ treat, unit = state_id, time = year,
-                     data = df, progfunc = "ridge", scm = TRUE)
-summary(ascm_out)
-plot(ascm_out)
+    def obj_placebo(w):
+        return np.sum((Y_placebo[:T0] - w @ Y_placebo_donors[:, :T0]) ** 2)
 
-# ── Synthetic DiD ──
-library(synthdid)
-setup <- panel.matrices(df, unit = "state_id", time = "year",
-                        outcome = "cigsale", treatment = "treat")
-sdid_est <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-plot(sdid_est)
+    n_d = Y_placebo_donors.shape[0]
+    cons = [{'type': 'eq', 'fun': lambda w: np.sum(w) - 1}]
+    bds = [(0, 1)] * n_d
+    res = minimize(obj_placebo, np.ones(n_d)/n_d, method='SLSQP', bounds=bds, constraints=cons)
+    if res.success:
+        placebo_gaps[donor] = Y_placebo - res.x @ Y_placebo_donors
+
+# Plot all placebo gaps
+plt.figure(figsize=(10, 6))
+for donor, pg in placebo_gaps.items():
+    plt.plot(years, pg, color='lightgray', alpha=0.5)
+plt.plot(years, gap, 'b-', linewidth=2, label='California')
+plt.axvline(x=treat_year, color='gray', linestyle=':')
+plt.axhline(y=0, color='gray', linestyle='--')
+plt.title('Placebo Tests: California vs. All Donors')
+plt.legend()
+plt.show()
+
+# ── Post/pre RMSPE ratio for inference ──
+rmspe_post_treat = np.sqrt(np.mean(gap[T0:] ** 2))
+ratio_treat = rmspe_post_treat / rmspe_pre
+
+ratios = []
+for donor, pg in placebo_gaps.items():
+    rmspe_pre_d = np.sqrt(np.mean(pg[:T0] ** 2))
+    rmspe_post_d = np.sqrt(np.mean(pg[T0:] ** 2))
+    if rmspe_pre_d > 0:
+        ratios.append(rmspe_post_d / rmspe_pre_d)
+
+p_value = np.mean([r >= ratio_treat for r in ratios])
+print(f'Post/pre RMSPE ratio (California): {ratio_treat:.2f}')
+print(f'Permutation p-value: {p_value:.3f}')
 ```
 
 > **Key results to report:**

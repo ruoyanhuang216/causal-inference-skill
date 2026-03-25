@@ -277,9 +277,9 @@ For every recommended method, present:
 Once the method and diagnostics are confirmed, provide:
 
 1. **Step-by-step implementation plan**
-2. **Code in the user's preferred language** (ask: R, Python, or Stata?)
+2. **Python code** for the selected method
    - Refer to [code-templates.md](code-templates.md) for templates
-3. **Key packages/libraries** to use
+3. **Key Python packages** to use
 4. **Robustness checks** to run:
    - Alternative specifications
    - Sensitivity analyses from Track F

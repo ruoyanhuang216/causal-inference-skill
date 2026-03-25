@@ -1,589 +1,711 @@
 # Code Templates for Causal Inference Methods
 
-This file provides starter code templates in R, Python, and Stata for the most commonly used causal inference methods. These are meant as starting points — adapt to the user's specific data and research design.
+This file provides starter code templates in Python for the most commonly used causal inference methods. These are meant as starting points — adapt to the user's specific data and research design.
 
 ---
 
 ## 1. Difference-in-Differences
 
-### R (Classic 2x2 DiD)
-```r
-library(fixest)
-
-# Classic 2x2 DiD
-did_model <- feols(outcome ~ treat * post | unit + time, data = df,
-                   cluster = ~unit)
-summary(did_model)
-
-# Event study (dynamic effects)
-event_model <- feols(outcome ~ i(rel_time, treat, ref = -1) | unit + time,
-                     data = df, cluster = ~unit)
-iplot(event_model, main = "Event Study")
-```
-
-### R (Staggered DiD — Callaway & Sant'Anna)
-```r
-library(did)
-
-# Group-time ATTs
-cs_att <- att_gt(
-  yname = "outcome",
-  tname = "year",
-  idname = "unit_id",
-  gname = "first_treat_year",  # 0 for never-treated
-  data = df,
-  control_group = "nevertreated",  # or "notyettreated"
-  est_method = "dr"  # doubly robust
-)
-summary(cs_att)
-
-# Aggregate: simple average
-agg_simple <- aggte(cs_att, type = "simple")
-summary(agg_simple)
-
-# Aggregate: dynamic effects (event study)
-agg_dynamic <- aggte(cs_att, type = "dynamic")
-ggdid(agg_dynamic)
-```
-
-### R (Staggered DiD — Sun & Abraham)
-```r
-library(fixest)
-
-# Interaction-weighted estimator
-sa_model <- feols(outcome ~ sunab(first_treat_year, year) | unit + year,
-                  data = df, cluster = ~unit)
-summary(sa_model)
-iplot(sa_model)
-```
-
-### Python (Classic DiD)
+### Classic 2x2 DiD
 ```python
 import statsmodels.formula.api as smf
+import pandas as pd
+import matplotlib.pyplot as plt
 
+# Classic DiD with TWFE
 model = smf.ols('outcome ~ treat * post + C(unit) + C(time)', data=df).fit(
     cov_type='cluster', cov_kwds={'groups': df['unit']}
 )
 print(model.summary())
 ```
 
-### Stata (Classic DiD)
-```stata
-* Classic DiD with TWFE
-reghdfe outcome treat##post, absorb(unit time) cluster(unit)
+### Staggered DiD — Callaway & Sant'Anna
+```python
+# Using the csdid package (Python port)
+# pip install csdid
+from csdid import att_gt
 
-* Event study
-reghdfe outcome ib(-1).rel_time##treat, absorb(unit time) cluster(unit)
-event_plot, default_look
+# Group-time ATTs
+result = att_gt(
+    data=df,
+    yname='outcome',
+    tname='year',
+    idname='unit_id',
+    gname='first_treat_year',  # 0 for never-treated
+    control_group='nevertreated',  # or 'notyettreated'
+    est_method='dr'  # doubly robust
+)
+print(result.summary())
+
+# Aggregate: simple average
+agg_simple = result.aggregate('simple')
+print(agg_simple.summary())
+
+# Aggregate: dynamic effects (event study)
+agg_dynamic = result.aggregate('dynamic')
+agg_dynamic.plot()
+plt.title('Event Study: Callaway & Sant\'Anna')
+plt.axhline(y=0, linestyle='--', color='gray')
+plt.show()
 ```
 
-### Stata (Staggered DiD)
-```stata
-* Callaway & Sant'Anna
-csdid outcome, ivar(unit_id) time(year) gvar(first_treat_year) method(dripw)
-csdid_plot
+### Alternative: DiD with linearmodels / pyfixest
+```python
+# pip install pyfixest
+import pyfixest as pf
 
-* de Chaisemartin & D'Haultfoeuille
-did_multiplegt outcome unit time treat, robust_dynamic dynamic(5) placebo(5)
+# TWFE
+twfe = pf.feols('outcome ~ treat_post | unit + time', data=df,
+                vcov={'CRV1': 'unit'})
+print(twfe.summary())
+
+# Event study with Sun & Abraham
+es = pf.feols('outcome ~ sunab(first_treat_year, year) | unit + year', data=df,
+              vcov={'CRV1': 'unit'})
+pf.iplot(es)
+plt.title('Sun & Abraham Event Study')
+plt.show()
 ```
 
 ---
 
 ## 2. Regression Discontinuity Design
 
-### R
-```r
-library(rdrobust)
-library(rddensity)
-
-# Main RD estimate (sharp)
-rd_est <- rdrobust(y = df$outcome, x = df$running_var, c = 0)
-summary(rd_est)
-
-# RD plot
-rdplot(y = df$outcome, x = df$running_var, c = 0,
-       title = "RD Plot", x.label = "Running Variable", y.label = "Outcome")
-
-# Manipulation test
-density_test <- rddensity(X = df$running_var, c = 0)
-summary(density_test)
-rdplotdensity(density_test, df$running_var)
-
-# Covariate balance at cutoff
-for (var in c("covar1", "covar2", "covar3")) {
-  cat("\n---", var, "---\n")
-  print(summary(rdrobust(y = df[[var]], x = df$running_var, c = 0)))
-}
-
-# Bandwidth sensitivity
-for (bw_mult in c(0.5, 0.75, 1, 1.25, 1.5, 2)) {
-  est <- rdrobust(y = df$outcome, x = df$running_var, c = 0,
-                  h = rd_est$bws[1, 1] * bw_mult)
-  cat(sprintf("BW multiplier: %.2f, Estimate: %.3f (%.3f)\n",
-              bw_mult, est$coef[1], est$se[3]))
-}
-```
-
-### Python
 ```python
 from rdrobust import rdrobust, rdplot
 from rddensity import rddensity
+import numpy as np
 
-# Main estimate
-rd = rdrobust(Y=df['outcome'], X=df['running_var'], c=0)
-print(rd)
+# ── Main RD estimate (sharp) ──
+rd_est = rdrobust(Y=df['outcome'], X=df['running_var'], c=0)
+print(rd_est)
 
-# Plot
-rdplot(y=df['outcome'], x=df['running_var'], c=0)
+# ── Fuzzy RD (with endogenous treatment) ──
+frd = rdrobust(Y=df['outcome'], X=df['running_var'], fuzzy=df['treatment'], c=0)
+print(frd)
 
-# Manipulation test
+# ── RD plot ──
+rdplot(y=df['outcome'], x=df['running_var'], c=0,
+       title='RD Plot', x_label='Running Variable', y_label='Outcome')
+
+# ── Manipulation test ──
 density = rddensity(X=df['running_var'], c=0)
 print(density)
-```
 
-### Stata
-```stata
-* Main estimate
-rdrobust outcome running_var, c(0)
+# ── Covariate balance at cutoff ──
+for cov in ['covar1', 'covar2', 'covar3']:
+    print(f'\n=== {cov} ===')
+    print(rdrobust(Y=df[cov], X=df['running_var'], c=0))
 
-* Plot
-rdplot outcome running_var, c(0)
-
-* Manipulation test
-rddensity running_var, c(0)
-
-* Bandwidth sensitivity
-rdrobust outcome running_var, c(0) h(5)
-rdrobust outcome running_var, c(0) h(10)
-rdrobust outcome running_var, c(0) h(15)
+# ── Bandwidth sensitivity ──
+opt_bw = rd_est.bws.values[0, 0]  # optimal bandwidth
+for mult in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]:
+    est = rdrobust(Y=df['outcome'], X=df['running_var'], c=0, h=opt_bw * mult)
+    coef = est.coef.values[0]
+    se = est.se.values[2]  # robust SE
+    pv = est.pv.values[2]
+    print(f'BW={opt_bw*mult:.1f} ({mult:.2f}x): Estimate={coef:.3f}, SE={se:.3f}, p={pv:.3f}')
 ```
 
 ---
 
 ## 3. Instrumental Variables
 
-### R
-```r
-library(fixest)
-library(ivreg)
-
-# 2SLS with fixest
-iv_model <- feols(outcome ~ controls | unit + year | treatment ~ instrument,
-                  data = df, cluster = ~unit)
-summary(iv_model)
-
-# Check first-stage F
-fitstat(iv_model, type = "ivf")
-
-# Reduced form
-rf_model <- feols(outcome ~ instrument + controls | unit + year,
-                  data = df, cluster = ~unit)
-summary(rf_model)
-
-# First stage
-fs_model <- feols(treatment ~ instrument + controls | unit + year,
-                  data = df, cluster = ~unit)
-summary(fs_model)
-```
-
-### Python
 ```python
 from linearmodels.iv import IV2SLS
+import statsmodels.api as sm
 
-# 2SLS
+# ── 2SLS ──
 iv = IV2SLS(
     dependent=df['outcome'],
-    exog=df[['const', 'controls']],
+    exog=sm.add_constant(df[['control1', 'control2']]),
     endog=df['treatment'],
-    instruments=df['instrument']
+    instruments=df[['instrument']]
 ).fit(cov_type='clustered', clusters=df['unit'])
 print(iv.summary)
 print(f"First-stage F: {iv.first_stage.diagnostics['f.stat']:.2f}")
-```
 
-### Stata
-```stata
-* 2SLS
-ivregress 2sls outcome controls (treatment = instrument), first robust
-estat firststage
-estat endogenous
+# ── First stage ──
+first_stage = sm.OLS(
+    df['treatment'],
+    sm.add_constant(df[['instrument', 'control1', 'control2']])
+).fit(cov_type='cluster', cov_kwds={'groups': df['unit']})
+print('First Stage:')
+print(first_stage.summary())
 
-* With fixed effects
-ivreghdfe outcome controls (treatment = instrument), absorb(unit year) cluster(unit)
+# ── Reduced form ──
+reduced_form = sm.OLS(
+    df['outcome'],
+    sm.add_constant(df[['instrument', 'control1', 'control2']])
+).fit(cov_type='cluster', cov_kwds={'groups': df['unit']})
+print('Reduced Form:')
+print(reduced_form.summary())
 
-* Weak instrument robust
-rivtest  /* Anderson-Rubin test */
+# ── With fixed effects using pyfixest ──
+import pyfixest as pf
+
+iv_fe = pf.feols('outcome ~ control1 + control2 | unit + year | treatment ~ instrument',
+                 data=df, vcov={'CRV1': 'unit'})
+print(iv_fe.summary())
 ```
 
 ---
 
 ## 4. Synthetic Control
 
-### R
-```r
-library(Synth)
-library(augsynth)
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
-# Classic Synthetic Control
-synth_data <- dataprep(
-  foo = df,
-  predictors = c("predictor1", "predictor2"),
-  predictors.op = "mean",
-  dependent = "outcome",
-  unit.variable = "unit_id",
-  time.variable = "year",
-  treatment.identifier = treated_unit,
-  controls.identifier = donor_units,
-  time.predictors.prior = pre_years,
-  time.optimize.ssr = pre_years,
-  time.plot = all_years
+# ── Using SparseSC ──
+# pip install SparseSC
+from SparseSC import fit
+
+# Reshape data to (units x time) matrices
+outcome_matrix = df.pivot(index='unit_id', columns='year', values='outcome').values
+treated_units = [0]  # index of treated unit(s)
+T0 = 18  # number of pre-treatment periods
+
+# Fit sparse synthetic control
+sc_model = fit(
+    features=outcome_matrix[:, :T0],
+    targets=outcome_matrix[:, T0:],
+    treated_units=treated_units
 )
-synth_out <- synth(synth_data)
-path.plot(synth_out, synth_data)
-gaps.plot(synth_out, synth_data)
 
-# Augmented SCM (easier interface)
-ascm <- augsynth(outcome ~ treat, unit = unit_id, time = year, data = df,
-                 progfunc = "ridge", scm = TRUE)
-summary(ascm)
-plot(ascm)
+# ── Manual Synthetic Control via constrained optimization ──
+from scipy.optimize import minimize
+
+# Separate treated and donor pre-treatment outcomes
+Y_pre_treat = outcome_matrix[0, :T0]  # treated unit pre-treatment
+Y_pre_donors = outcome_matrix[1:, :T0]  # donor units pre-treatment
+n_donors = Y_pre_donors.shape[0]
+
+# Minimize pre-treatment MSPE subject to weights >= 0, sum to 1
+def objective(w):
+    synthetic = w @ Y_pre_donors
+    return np.sum((Y_pre_treat - synthetic) ** 2)
+
+constraints = [{'type': 'eq', 'fun': lambda w: np.sum(w) - 1}]
+bounds = [(0, 1)] * n_donors
+w0 = np.ones(n_donors) / n_donors
+
+result = minimize(objective, w0, method='SLSQP', bounds=bounds, constraints=constraints)
+weights = result.x
+
+# Construct synthetic control for all periods
+synthetic_all = weights @ outcome_matrix[1:, :]
+actual_all = outcome_matrix[0, :]
+
+# ── Path plot ──
+years = sorted(df['year'].unique())
+plt.figure(figsize=(10, 6))
+plt.plot(years, actual_all, 'b-', label='Treated Unit', linewidth=2)
+plt.plot(years, synthetic_all, 'r--', label='Synthetic Control', linewidth=2)
+plt.axvline(x=years[T0], color='gray', linestyle=':', label='Treatment')
+plt.xlabel('Year')
+plt.ylabel('Outcome')
+plt.title('Synthetic Control: Treated vs. Synthetic')
+plt.legend()
+plt.show()
+
+# ── Gap plot (treatment effect) ──
+gap = actual_all - synthetic_all
+plt.figure(figsize=(10, 6))
+plt.plot(years, gap, 'k-', linewidth=2)
+plt.axvline(x=years[T0], color='gray', linestyle=':')
+plt.axhline(y=0, color='gray', linestyle='--')
+plt.xlabel('Year')
+plt.ylabel('Gap (Actual - Synthetic)')
+plt.title('Estimated Treatment Effect')
+plt.show()
+
+# ── Pre-treatment RMSPE ──
+rmspe_pre = np.sqrt(np.mean((actual_all[:T0] - synthetic_all[:T0]) ** 2))
+print(f'Pre-treatment RMSPE: {rmspe_pre:.3f}')
+
+# ── Donor weights ──
+donor_ids = df['unit_id'].unique()[1:]
+for uid, w in sorted(zip(donor_ids, weights), key=lambda x: -x[1]):
+    if w > 0.01:
+        print(f'  Unit {uid}: {w:.3f}')
+
+# ── Placebo tests (permutation inference) ──
+placebo_gaps = []
+for i in range(1, outcome_matrix.shape[0]):
+    Y_pre_t = outcome_matrix[i, :T0]
+    Y_pre_d = np.delete(outcome_matrix, i, axis=0)[:, :T0]
+    Y_all_d = np.delete(outcome_matrix, i, axis=0)
+
+    def obj_placebo(w):
+        return np.sum((Y_pre_t - w @ Y_pre_d) ** 2)
+
+    n_d = Y_pre_d.shape[0]
+    cons = [{'type': 'eq', 'fun': lambda w: np.sum(w) - 1}]
+    bds = [(0, 1)] * n_d
+    res = minimize(obj_placebo, np.ones(n_d)/n_d, method='SLSQP', bounds=bds, constraints=cons)
+    synthetic_placebo = res.x @ np.delete(outcome_matrix, i, axis=0)
+    placebo_gaps.append(outcome_matrix[i, :] - synthetic_placebo)
+
+# Plot all placebo gaps
+plt.figure(figsize=(10, 6))
+for g in placebo_gaps:
+    plt.plot(years, g, color='lightgray', alpha=0.5)
+plt.plot(years, gap, 'b-', linewidth=2, label='Treated Unit')
+plt.axvline(x=years[T0], color='gray', linestyle=':')
+plt.axhline(y=0, color='gray', linestyle='--')
+plt.title('Placebo Tests')
+plt.legend()
+plt.show()
 ```
 
-### R (Synthetic DiD)
-```r
-library(synthdid)
+### Synthetic Difference-in-Differences
+```python
+# pip install synthdid
+# Note: synthdid has limited Python support; consider using the R package via rpy2
+# Alternative: manual implementation following Arkhangelsky et al. (2021)
 
-# Prepare data as matrix
-setup <- panel.matrices(df, unit = "unit_id", time = "year",
-                        outcome = "outcome", treatment = "treat")
-
-# SDID estimate
-sdid <- synthdid_estimate(setup$Y, setup$N0, setup$T0)
-print(sdid)
-plot(sdid)
-
-# Comparison: SC and DiD
-sc <- sc_estimate(setup$Y, setup$N0, setup$T0)
-did <- did_estimate(setup$Y, setup$N0, setup$T0)
-```
-
-### Stata
-```stata
-* Synthetic Control
-synth outcome predictor1 predictor2 outcome(pre_years), ///
-  trunit(treated_id) trperiod(treat_year) figure
+# Using CausalImpact as a Bayesian alternative (see Section 10)
 ```
 
 ---
 
 ## 5. Propensity Score / Matching Methods
 
-### R (Matching)
-```r
-library(MatchIt)
-library(cobalt)
-
-# Propensity score matching (nearest neighbor)
-m_out <- matchit(treat ~ x1 + x2 + x3, data = df,
-                 method = "nearest", distance = "logit", caliper = 0.2)
-
-# Check balance
-summary(m_out)
-love.plot(m_out, thresholds = 0.1)
-bal.plot(m_out, var.name = "x1")
-
-# Estimate treatment effect on matched data
-m_data <- match.data(m_out)
-model <- lm(outcome ~ treat, data = m_data, weights = weights)
-# Use cluster-robust SEs by subclass
-library(lmtest)
-library(sandwich)
-coeftest(model, vcov = vcovCL(model, cluster = m_data$subclass))
-```
-
-### R (IPW / AIPW)
-```r
-library(WeightIt)
-library(cobalt)
-
-# Inverse probability weights
-w_out <- weightit(treat ~ x1 + x2 + x3, data = df,
-                  method = "ps", estimand = "ATT")
-summary(w_out)
-bal.tab(w_out, thresholds = 0.1)
-
-# Entropy balancing
-w_ebal <- weightit(treat ~ x1 + x2 + x3, data = df,
-                   method = "ebal", estimand = "ATT")
-bal.tab(w_ebal)
-
-# AIPW using the weights
-library(lmtest)
-library(sandwich)
-model <- lm(outcome ~ treat, data = df, weights = w_out$weights)
-coeftest(model, vcov = vcovHC(model, type = "HC2"))
-```
-
-### R (Doubly Robust with AIPW package)
-```r
-library(AIPW)
-
-aipw_est <- AIPW$new(
-  Y = df$outcome,
-  A = df$treat,
-  W = df[, c("x1", "x2", "x3")],
-  Q.SL.library = c("SL.glm", "SL.ranger"),
-  g.SL.library = c("SL.glm", "SL.ranger"),
-  k_split = 5,
-  verbose = FALSE
-)
-aipw_est$stratified_fit()$summary()
-```
-
-### Python
+### Propensity Score Matching
 ```python
 from sklearn.linear_model import LogisticRegression
-from causalinference import CausalModel
+from sklearn.neighbors import NearestNeighbors
+import numpy as np
+import pandas as pd
 
-# Using causalinference package
-cm = CausalModel(Y=df['outcome'].values, D=df['treat'].values,
-                 X=df[['x1', 'x2', 'x3']].values)
-cm.est_via_matching()
-print(cm.estimates)
+covariates = ['x1', 'x2', 'x3']
+X = df[covariates].values
+treat = df['treat'].values
 
-cm.est_via_ols()
-print(cm.estimates)
+# ── Estimate propensity score ──
+ps_model = LogisticRegression(max_iter=1000, C=1.0)
+ps_model.fit(X, treat)
+df['pscore'] = ps_model.predict_proba(X)[:, 1]
 
-cm.est_propensity_s()
-cm.est_via_weighting()
-print(cm.estimates)
+# ── Check overlap ──
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+ax.hist(df.loc[df['treat']==1, 'pscore'], bins=30, alpha=0.5, label='Treated', density=True)
+ax.hist(df.loc[df['treat']==0, 'pscore'], bins=30, alpha=0.5, label='Control', density=True)
+ax.set_xlabel('Propensity Score')
+ax.legend()
+ax.set_title('Propensity Score Distribution')
+plt.show()
+
+# ── Nearest-neighbor matching (with caliper) ──
+treated_idx = df[df['treat'] == 1].index
+control_idx = df[df['treat'] == 0].index
+
+nn = NearestNeighbors(n_neighbors=1, metric='euclidean')
+nn.fit(df.loc[control_idx, ['pscore']].values)
+distances, indices = nn.kneighbors(df.loc[treated_idx, ['pscore']].values)
+
+caliper = 0.2 * df['pscore'].std()
+matched_mask = distances.flatten() < caliper
+matched_treated = treated_idx[matched_mask]
+matched_control = control_idx[indices.flatten()[matched_mask]]
+
+# ── ATT estimate ──
+att = df.loc[matched_treated, 'outcome'].mean() - df.loc[matched_control, 'outcome'].mean()
+print(f'ATT (matched): {att:.3f}')
+
+# ── Balance check (standardized mean differences) ──
+for cov in covariates:
+    mean_t = df.loc[matched_treated, cov].mean()
+    mean_c = df.loc[matched_control, cov].mean()
+    pooled_std = np.sqrt((df.loc[matched_treated, cov].var() + df.loc[matched_control, cov].var()) / 2)
+    smd = (mean_t - mean_c) / pooled_std
+    print(f'{cov}: SMD = {smd:.3f} {"OK" if abs(smd) < 0.1 else "IMBALANCED"}')
 ```
 
-### Stata
-```stata
-* Propensity score matching
-teffects psmatch (outcome) (treat x1 x2 x3), atet nn(1)
-tebalance summarize
+### Inverse Probability Weighting (IPW)
+```python
+import numpy as np
 
-* IPW
-teffects ipw (outcome) (treat x1 x2 x3), atet
-tebalance summarize
+# IPW weights
+pscore = df['pscore'].values
+treat = df['treat'].values
 
-* AIPW (doubly robust)
-teffects aipw (outcome x1 x2 x3) (treat x1 x2 x3), atet
+# ATT weights: treated get weight 1, controls get weight pscore/(1-pscore)
+weights = np.where(treat == 1, 1.0, pscore / (1 - pscore))
 
-* Entropy balancing
-ebalance treat x1 x2 x3
+# Trim extreme weights
+weights = np.clip(weights, 0, np.percentile(weights[treat == 0], 99))
+
+# Weighted outcome means
+att_ipw = (
+    np.average(df.loc[treat == 1, 'outcome'], weights=weights[treat == 1]) -
+    np.average(df.loc[treat == 0, 'outcome'], weights=weights[treat == 0])
+)
+print(f'ATT (IPW): {att_ipw:.3f}')
+```
+
+### Doubly Robust / AIPW
+```python
+from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.model_selection import cross_val_predict
+import numpy as np
+
+covariates = ['x1', 'x2', 'x3']
+X = df[covariates].values
+Y = df['outcome'].values
+D = df['treat'].values
+
+# Propensity score (cross-fitted)
+ps_model = LogisticRegression(max_iter=1000)
+e_hat = cross_val_predict(ps_model, X, D, cv=5, method='predict_proba')[:, 1]
+e_hat = np.clip(e_hat, 0.01, 0.99)
+
+# Outcome model (cross-fitted, separate for treated and control)
+mu1_hat = cross_val_predict(LinearRegression(), X[D == 1], Y[D == 1], cv=5)
+mu0_hat = cross_val_predict(LinearRegression(), X[D == 0], Y[D == 0], cv=5)
+
+# Full-sample outcome predictions (for AIPW formula)
+from sklearn.base import clone
+m1 = LinearRegression().fit(X[D == 1], Y[D == 1])
+m0 = LinearRegression().fit(X[D == 0], Y[D == 0])
+mu1_full = m1.predict(X)
+mu0_full = m0.predict(X)
+
+# AIPW estimator for ATT
+n = len(Y)
+n1 = D.sum()
+
+aipw_att = (1/n1) * np.sum(
+    D * Y - (D - e_hat) / (1 - e_hat) * (1 - D) * (Y - mu0_full)
+) - (1/n1) * np.sum(
+    D * mu0_full
+)
+
+# Simpler: using econml's doubly robust estimator
+from econml.dr import DRLearner
+
+dr = DRLearner(model_propensity=LogisticRegression(max_iter=1000),
+               model_regression=LinearRegression(),
+               model_final=LinearRegression())
+dr.fit(Y, D, X=X)
+ate = dr.ate(X)
+print(f'ATE (DR-Learner): {ate:.3f}')
+```
+
+### Using causalinference package
+```python
+from causalinference import CausalModel
+
+cm = CausalModel(Y=df['outcome'].values, D=df['treat'].values,
+                 X=df[['x1', 'x2', 'x3']].values)
+
+# OLS
+cm.est_via_ols()
+print('OLS:', cm.estimates)
+
+# Propensity score matching
+cm.est_propensity_s()
+cm.est_via_matching()
+print('Matching:', cm.estimates)
+
+# Weighting
+cm.est_via_weighting()
+print('IPW:', cm.estimates)
 ```
 
 ---
 
 ## 6. Double/Debiased Machine Learning
 
-### R
-```r
-library(DoubleML)
-library(mlr3)
-library(mlr3learners)
-
-# Setup
-dml_data <- DoubleMLData$new(df, y_col = "outcome", d_cols = "treat",
-                              x_cols = c("x1", "x2", "x3"))
-
-# Choose ML methods
-ml_l <- lrn("regr.ranger", num.trees = 500)  # outcome model
-ml_m <- lrn("classif.ranger", num.trees = 500)  # treatment model
-
-# Partially Linear Model
-dml_plr <- DoubleMLPLR$new(dml_data, ml_l = ml_l, ml_m = ml_m, n_folds = 5)
-dml_plr$fit()
-print(dml_plr)
-dml_plr$summary()
-```
-
-### Python
 ```python
 from doubleml import DoubleMLPLR, DoubleMLData
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.linear_model import LassoCV
 
-# Setup
+# ── Setup ──
 dml_data = DoubleMLData(df, y_col='outcome', d_cols='treat',
                          x_cols=['x1', 'x2', 'x3'])
 
-# ML methods
-ml_l = RandomForestRegressor(n_estimators=500)
-ml_m = RandomForestClassifier(n_estimators=500)
+# ── With Random Forest ──
+ml_l = RandomForestRegressor(n_estimators=500, max_depth=5, random_state=42)
+ml_m = RandomForestClassifier(n_estimators=500, max_depth=5, random_state=42)
 
-# Fit
-dml = DoubleMLPLR(dml_data, ml_l=ml_l, ml_m=ml_m, n_folds=5)
-dml.fit()
-print(dml.summary)
+dml_rf = DoubleMLPLR(dml_data, ml_l=ml_l, ml_m=ml_m, n_folds=5)
+dml_rf.fit()
+print('DML (Random Forest):')
+print(dml_rf.summary)
+
+# ── With Lasso ──
+ml_l_lasso = LassoCV(cv=5)
+ml_m_lasso = LogisticRegressionCV(cv=5, max_iter=1000)
+
+dml_lasso = DoubleMLPLR(dml_data, ml_l=ml_l_lasso, ml_m=ml_m_lasso, n_folds=5)
+dml_lasso.fit()
+print('DML (Lasso):')
+print(dml_lasso.summary)
+
+# ── Sensitivity to number of folds ──
+for k in [2, 3, 5, 10]:
+    dml_k = DoubleMLPLR(dml_data, ml_l=ml_l, ml_m=ml_m, n_folds=k)
+    dml_k.fit()
+    print(f'K={k}: coef={dml_k.coef[0]:.4f}, se={dml_k.se[0]:.4f}')
 ```
 
 ---
 
 ## 7. Causal Forest / Heterogeneous Treatment Effects
 
-### R
-```r
-library(grf)
-
-# Prepare data
-X <- as.matrix(df[, c("x1", "x2", "x3")])
-Y <- df$outcome
-W <- df$treat
-
-# Estimate causal forest
-cf <- causal_forest(X, Y, W, num.trees = 2000)
-
-# Average treatment effect
-ate <- average_treatment_effect(cf, target.sample = "all")
-cat(sprintf("ATE: %.3f (%.3f)\n", ate[1], ate[2]))
-
-# ATT
-att <- average_treatment_effect(cf, target.sample = "treated")
-cat(sprintf("ATT: %.3f (%.3f)\n", att[1], att[2]))
-
-# Heterogeneous effects
-cate <- predict(cf, estimate.variance = TRUE)
-df$cate <- cate$predictions
-df$cate_se <- sqrt(cate$variance.estimates)
-
-# Calibration test
-test_calibration(cf)
-
-# Variable importance
-varimp <- variable_importance(cf)
-names(varimp) <- c("x1", "x2", "x3")
-sort(varimp, decreasing = TRUE)
-
-# Best linear projection
-blp <- best_linear_projection(cf, X)
-print(blp)
-```
-
-### Python
 ```python
 from econml.dml import CausalForestDML
+from econml.dr import DRLearner
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
-# Fit
+covariates = ['x1', 'x2', 'x3']
+X = df[covariates].values
+Y = df['outcome'].values
+T = df['treat'].values
+
+# ═══════════════════════════════════════════
+# Causal Forest (via EconML)
+# ═══════════════════════════════════════════
 cf = CausalForestDML(
     model_y='auto', model_t='auto',
-    n_estimators=2000, random_state=42
+    n_estimators=2000,
+    min_samples_leaf=5,
+    random_state=42,
+    cv=5  # cross-fitting folds
 )
-cf.fit(Y=df['outcome'], T=df['treat'], X=df[['x1', 'x2', 'x3']])
+cf.fit(Y=Y, T=T, X=X)
 
-# ATE
-ate = cf.ate(X=df[['x1', 'x2', 'x3']])
-ate_inf = cf.ate_inference(X=df[['x1', 'x2', 'x3']])
-print(f"ATE: {ate_inf.mean_point:.3f} ({ate_inf.stderr_mean:.3f})")
+# ── ATE ──
+ate_inf = cf.ate_inference(X=X)
+print(f'ATE: {ate_inf.mean_point:.3f} (SE: {ate_inf.stderr_mean:.3f})')
+print(f'95% CI: [{ate_inf.conf_int_mean()[0][0]:.3f}, {ate_inf.conf_int_mean()[0][1]:.3f}]')
 
-# CATE
-cate = cf.effect(X=df[['x1', 'x2', 'x3']])
+# ── CATE predictions ──
+cate = cf.effect(X=X)
+cate_inf = cf.effect_inference(X=X)
+
+df['cate'] = cate
+df['cate_lower'] = cate_inf.conf_int()[0]
+df['cate_upper'] = cate_inf.conf_int()[1]
+
+# ── Distribution of treatment effects ──
+plt.figure(figsize=(8, 5))
+plt.hist(cate, bins=50, color='steelblue', alpha=0.7, edgecolor='white')
+plt.axvline(x=ate_inf.mean_point, color='red', linestyle='--',
+            label=f'ATE = {ate_inf.mean_point:.3f}')
+plt.xlabel('Conditional Average Treatment Effect (CATE)')
+plt.ylabel('Count')
+plt.title('Distribution of Predicted Treatment Effects')
+plt.legend()
+plt.show()
+
+# ── Feature importance (via summary) ──
+shap_values = cf.shap_values(X)
+shap_importance = np.abs(shap_values['Y0']).mean(axis=0)
+importance_df = pd.DataFrame({'variable': covariates, 'importance': shap_importance})
+importance_df = importance_df.sort_values('importance', ascending=True)
+
+plt.figure(figsize=(8, 5))
+plt.barh(importance_df['variable'], importance_df['importance'])
+plt.xlabel('Mean |SHAP value|')
+plt.title('Feature Importance for Treatment Effect Heterogeneity')
+plt.show()
+
+# ── Group Average Treatment Effects (GATE) by quintile ──
+df['cate_quintile'] = pd.qcut(cate, q=5, labels=[1, 2, 3, 4, 5])
+
+for q in range(1, 6):
+    mask = df['cate_quintile'] == q
+    gate_inf = cf.ate_inference(X=X[mask])
+    print(f'Quintile {q}: GATE = {gate_inf.mean_point:.3f} '
+          f'(SE: {gate_inf.stderr_mean:.3f}), '
+          f'N = {mask.sum()}')
+
+# ── CLAN: Characterize subgroups ──
+print('\nSubgroup Characteristics by CATE Quintile:')
+for cov in covariates:
+    means = df.groupby('cate_quintile')[cov].mean()
+    print(f'\n{cov}:')
+    for q, m in means.items():
+        print(f'  Q{q}: {m:.3f}')
+```
+
+### Meta-Learners
+```python
+from econml.metalearners import SLearner, TLearner, XLearner
+from sklearn.ensemble import GradientBoostingRegressor
+
+# ── S-Learner ──
+s_learner = SLearner(overall_model=GradientBoostingRegressor(n_estimators=200))
+s_learner.fit(Y, T, X=X)
+cate_s = s_learner.effect(X)
+
+# ── T-Learner ──
+t_learner = TLearner(models=GradientBoostingRegressor(n_estimators=200))
+t_learner.fit(Y, T, X=X)
+cate_t = t_learner.effect(X)
+
+# ── X-Learner ──
+x_learner = XLearner(models=GradientBoostingRegressor(n_estimators=200))
+x_learner.fit(Y, T, X=X)
+cate_x = x_learner.effect(X)
+
+# Compare meta-learners
+print(f'S-Learner ATE: {cate_s.mean():.3f}')
+print(f'T-Learner ATE: {cate_t.mean():.3f}')
+print(f'X-Learner ATE: {cate_x.mean():.3f}')
 ```
 
 ---
 
 ## 8. Sensitivity Analysis
 
-### R (Oster's Delta)
-```r
-# Manual computation
+### Oster's Delta
+```python
+import statsmodels.formula.api as smf
+import numpy as np
+
 # Short regression (no controls)
-short <- lm(outcome ~ treat, data = df)
+short = smf.ols('outcome ~ treat', data=df).fit()
+beta_short = short.params['treat']
+r2_short = short.rsquared
+
 # Long regression (with controls)
-long <- lm(outcome ~ treat + x1 + x2 + x3, data = df)
+long = smf.ols('outcome ~ treat + x1 + x2 + x3', data=df).fit()
+beta_long = long.params['treat']
+r2_long = long.rsquared
 
-# Oster's delta (simplified)
-beta_short <- coef(short)["treat"]
-beta_long <- coef(long)["treat"]
-r2_short <- summary(short)$r.squared
-r2_long <- summary(long)$r.squared
-r2_max <- min(1, 1.3 * r2_long)  # Oster's suggestion
+# Oster's delta
+r2_max = min(1.0, 1.3 * r2_long)  # Oster's suggestion: R2_max = 1.3 * R2_long
+delta = (beta_long * (r2_max - r2_long)) / ((beta_short - beta_long) * (r2_long - r2_short))
+print(f"Oster's delta: {delta:.2f}")
+print(f"  delta > 1 suggests robustness to unobservables")
+print(f"  beta_short = {beta_short:.4f}, beta_long = {beta_long:.4f}")
+print(f"  R2_short = {r2_short:.4f}, R2_long = {r2_long:.4f}")
 
-delta <- (beta_long * (r2_max - r2_long)) / ((beta_short - beta_long) * (r2_long - r2_short))
-cat(sprintf("Oster's delta: %.2f\n", delta))
-# delta > 1 suggests robustness to unobservables
+# Bias-adjusted estimate (beta* under proportional selection)
+beta_star = beta_long - delta * (beta_short - beta_long) * (r2_max - r2_long) / (r2_long - r2_short)
+print(f"  Bias-adjusted beta* (delta=1): {beta_star:.4f}")
 ```
 
-### R (Cinelli & Hazlett Sensitivity)
-```r
-library(sensemakr)
+### Cinelli & Hazlett (Omitted Variable Bias)
+```python
+# Manual implementation of key sensitivity measures
+import statsmodels.formula.api as smf
+import numpy as np
 
-model <- lm(outcome ~ treat + x1 + x2 + x3, data = df)
+model = smf.ols('outcome ~ treat + x1 + x2 + x3', data=df).fit()
+beta_treat = model.params['treat']
+se_treat = model.bse['treat']
+t_stat = model.tvalues['treat']
+dof = model.df_resid
 
-# Sensitivity analysis
-sens <- sensemakr(model, treatment = "treat",
-                  benchmark_covariates = c("x1", "x2"),
-                  kd = 1:3)
-summary(sens)
-plot(sens)
-ovb_contour_plot(sens)
-```
+# Robustness Value (RV): minimum confounding strength to reduce estimate to 0
+# RV_q = sqrt(t^2 / (t^2 + dof))  (for q=1, i.e., reducing to 0)
+rv = np.sqrt(t_stat**2 / (t_stat**2 + dof))
+print(f'Robustness Value (RV): {rv:.3f}')
+print(f'  An unobserved confounder would need to explain at least {rv:.1%} of the')
+print(f'  residual variance of both treatment and outcome to reduce the estimate to 0.')
 
-### Stata (Oster)
-```stata
-* Using psacalc
-psacalc delta treat, rmax(1.3) mcontrol(x1 x2 x3)
+# Benchmark against observed covariates
+# Partial R-squared of each covariate with outcome (residualized)
+for cov in ['x1', 'x2', 'x3']:
+    # Partial R2 of covariate with outcome
+    restricted = smf.ols(f'outcome ~ treat + {" + ".join(c for c in ["x1","x2","x3"] if c != cov)}', data=df).fit()
+    partial_r2_y = 1 - model.ssr / restricted.ssr
+
+    # Partial R2 of covariate with treatment
+    treat_full = smf.ols(f'treat ~ {" + ".join(["x1","x2","x3"])}', data=df).fit()
+    treat_restricted = smf.ols(f'treat ~ {" + ".join(c for c in ["x1","x2","x3"] if c != cov)}', data=df).fit()
+    partial_r2_d = 1 - treat_full.ssr / treat_restricted.ssr
+
+    print(f'  {cov}: partial R2(Y)={partial_r2_y:.4f}, partial R2(D)={partial_r2_d:.4f}')
 ```
 
 ---
 
 ## 9. Mediation Analysis
 
-### R
-```r
-library(mediation)
+```python
+import statsmodels.formula.api as smf
+import numpy as np
+from scipy import stats
 
+# ── Baron-Kenny (classic, for reference) ──
+# Total effect
+total = smf.ols('outcome ~ treat + x1 + x2', data=df).fit()
 # Mediator model
-med_model <- lm(mediator ~ treat + x1 + x2, data = df)
+med = smf.ols('mediator ~ treat + x1 + x2', data=df).fit()
+# Outcome model with mediator
+out = smf.ols('outcome ~ treat + mediator + x1 + x2', data=df).fit()
 
-# Outcome model
-out_model <- lm(outcome ~ treat + mediator + x1 + x2, data = df)
+total_effect = total.params['treat']
+direct_effect = out.params['treat']
+indirect_effect = med.params['treat'] * out.params['mediator']
 
-# Causal mediation
-med_out <- mediate(med_model, out_model, treat = "treat",
-                   mediator = "mediator", boot = TRUE, sims = 1000)
-summary(med_out)
-plot(med_out)
+print(f'Total effect: {total_effect:.4f}')
+print(f'Direct effect: {direct_effect:.4f}')
+print(f'Indirect effect (via mediator): {indirect_effect:.4f}')
+print(f'Proportion mediated: {indirect_effect / total_effect:.1%}')
 
-# Sensitivity analysis
-sens <- medsens(med_out)
-summary(sens)
-plot(sens)
+# ── Bootstrap inference for indirect effect ──
+n_boot = 1000
+indirect_boot = np.zeros(n_boot)
+for b in range(n_boot):
+    boot_idx = np.random.choice(len(df), size=len(df), replace=True)
+    boot_df = df.iloc[boot_idx]
+    med_b = smf.ols('mediator ~ treat + x1 + x2', data=boot_df).fit()
+    out_b = smf.ols('outcome ~ treat + mediator + x1 + x2', data=boot_df).fit()
+    indirect_boot[b] = med_b.params['treat'] * out_b.params['mediator']
+
+ci_lower = np.percentile(indirect_boot, 2.5)
+ci_upper = np.percentile(indirect_boot, 97.5)
+print(f'Indirect effect 95% CI (bootstrap): [{ci_lower:.4f}, {ci_upper:.4f}]')
+
+# ── Sensitivity analysis: what if sequential ignorability is violated? ──
+# Vary rho (correlation of mediator and outcome residuals)
+print('\nSensitivity to violation of sequential ignorability:')
+for rho in [0, 0.1, 0.2, 0.3, 0.5]:
+    # Simplified: indirect effect attenuated by factor (1 - rho^2)
+    adjusted = indirect_effect * (1 - rho**2)
+    print(f'  rho={rho:.1f}: adjusted indirect effect = {adjusted:.4f}')
 ```
 
 ---
 
 ## 10. CausalImpact (Bayesian Structural Time Series)
 
-### R
-```r
-library(CausalImpact)
-
-# Data: time series matrix (columns: outcome, control_series_1, control_series_2, ...)
-data <- zoo(cbind(y, x1, x2), dates)
-
-pre_period <- c(start_date, intervention_date - 1)
-post_period <- c(intervention_date, end_date)
-
-impact <- CausalImpact(data, pre.period = pre_period, post.period = post_period)
-summary(impact)
-summary(impact, "report")  # narrative summary
-plot(impact)
-```
-
-### Python
 ```python
 from causalimpact import CausalImpact
+import pandas as pd
+
+# Data: DataFrame with DatetimeIndex
+# First column = outcome series, remaining columns = control series
+data = pd.DataFrame({
+    'y': outcome_series,
+    'x1': control_series_1,
+    'x2': control_series_2
+}, index=dates)
 
 pre_period = ['2020-01-01', '2020-06-30']
 post_period = ['2020-07-01', '2020-12-31']
 
 ci = CausalImpact(data, pre_period, post_period)
+
+# Summary statistics
 print(ci.summary())
+
+# Narrative report
 print(ci.summary(output='report'))
+
+# Plot: original, pointwise effects, cumulative effects
 ci.plot()
 ```
 
@@ -591,47 +713,76 @@ ci.plot()
 
 ## 11. Interrupted Time Series
 
-### R
-```r
-library(nlme)
+```python
+import statsmodels.formula.api as smf
+import statsmodels.api as sm
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
-# Create time variables
-df$time <- 1:nrow(df)
-df$intervention <- as.numeric(df$time >= intervention_point)
-df$time_after <- ifelse(df$intervention == 1, df$time - intervention_point, 0)
+# ── Create time variables ──
+df['time'] = range(1, len(df) + 1)
+df['intervention'] = (df['time'] >= intervention_point).astype(int)
+df['time_after'] = np.where(df['intervention'] == 1, df['time'] - intervention_point, 0)
 
-# Segmented regression with autocorrelation
-its_model <- gls(outcome ~ time + intervention + time_after,
-                 data = df,
-                 correlation = corARMA(p = 1, form = ~time),
-                 method = "ML")
-summary(its_model)
-# intervention coefficient = level change
-# time_after coefficient = slope change
-```
+# ── Segmented regression ──
+model = smf.ols('outcome ~ time + intervention + time_after', data=df).fit(
+    cov_type='HAC', cov_kwds={'maxlags': 4}  # Newey-West SEs for autocorrelation
+)
+print(model.summary())
+print(f'\nLevel change at intervention: {model.params["intervention"]:.3f} (p={model.pvalues["intervention"]:.4f})')
+print(f'Slope change after intervention: {model.params["time_after"]:.3f} (p={model.pvalues["time_after"]:.4f})')
 
-### Stata
-```stata
-itsa outcome, single trperiod(intervention_time) lag(1)
-actest, lags(12)  /* test for autocorrelation */
+# ── Plot ──
+plt.figure(figsize=(10, 6))
+plt.scatter(df['time'], df['outcome'], color='gray', alpha=0.5, s=20)
+
+# Pre-intervention fit
+pre = df[df['intervention'] == 0]
+plt.plot(pre['time'], model.predict(pre), 'b-', linewidth=2, label='Pre-intervention trend')
+
+# Post-intervention fit
+post = df[df['intervention'] == 1]
+plt.plot(post['time'], model.predict(post), 'r-', linewidth=2, label='Post-intervention trend')
+
+# Counterfactual (extend pre-trend)
+cf_params = model.params.copy()
+cf_params['intervention'] = 0
+cf_params['time_after'] = 0
+counterfactual = cf_params['Intercept'] + cf_params['time'] * post['time']
+plt.plot(post['time'], counterfactual, 'b--', alpha=0.5, label='Counterfactual')
+
+plt.axvline(x=intervention_point, color='gray', linestyle=':', label='Intervention')
+plt.xlabel('Time')
+plt.ylabel('Outcome')
+plt.title('Interrupted Time Series Analysis')
+plt.legend()
+plt.show()
+
+# ── Test for autocorrelation ──
+from statsmodels.stats.diagnostic import acorr_ljungbox
+lb_test = acorr_ljungbox(model.resid, lags=[4, 8, 12], return_df=True)
+print('\nLjung-Box test for autocorrelation:')
+print(lb_test)
 ```
 
 ---
 
-## Key Packages Summary
+## Key Python Packages Summary
 
-| Method | R | Python | Stata |
-|--------|---|--------|-------|
-| DiD (classic) | `fixest` | `statsmodels`, `linearmodels` | `reghdfe` |
-| DiD (staggered) | `did`, `fixest` (sunab) | `csdid` | `csdid`, `did_multiplegt` |
-| RDD | `rdrobust`, `rddensity` | `rdrobust` | `rdrobust` |
-| IV | `fixest`, `ivreg` | `linearmodels` | `ivregress`, `ivreghdfe` |
-| Synthetic Control | `Synth`, `augsynth`, `synthdid` | `SparseSC` | `synth` |
-| Matching | `MatchIt`, `cobalt` | `causalinference` | `teffects` |
-| IPW/AIPW | `WeightIt`, `AIPW` | `zepid`, `causalml` | `teffects` |
-| DML | `DoubleML` | `doubleml`, `econml` | `ddml` |
-| Causal Forest | `grf` | `econml` | — |
-| Sensitivity | `sensemakr` | — | `psacalc` |
-| Mediation | `mediation` | — | `medeff` |
-| CausalImpact | `CausalImpact` | `causalimpact` | — |
-| ITS | `nlme`, `its.analysis` | `statsmodels` | `itsa` |
+| Method | Primary Package | Alternative |
+|--------|----------------|-------------|
+| DiD (classic) | `statsmodels`, `pyfixest` | `linearmodels` |
+| DiD (staggered) | `csdid`, `pyfixest` (sunab) | — |
+| RDD | `rdrobust` | — |
+| IV | `linearmodels`, `pyfixest` | `statsmodels` (manual 2SLS) |
+| Synthetic Control | `SparseSC`, scipy (manual) | — |
+| Matching | `causalinference`, sklearn | `pymatch` |
+| IPW/AIPW | `econml`, sklearn | `zepid`, `causalml` |
+| DML | `doubleml` | `econml` |
+| Causal Forest | `econml` | `causalml` |
+| Meta-Learners | `econml` | `causalml` |
+| Sensitivity | `statsmodels` (manual) | — |
+| Mediation | `statsmodels` (manual) | `pingouin` |
+| CausalImpact | `causalimpact` | `tfcausalimpact` |
+| ITS | `statsmodels` | — |
