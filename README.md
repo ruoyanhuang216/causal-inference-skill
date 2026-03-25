@@ -2,7 +2,7 @@
 
 An interactive [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that guides researchers through the complete causal inference workflow — from research question formulation to method selection, assumption diagnostics, and implementation with code.
 
-Designed for social scientists, economists, political scientists, epidemiologists, and applied researchers working on causal questions.
+Designed for social scientists, economists, political scientists, epidemiologists, marketing scientists, and applied researchers working on causal questions — covering both reduced-form and structural approaches.
 
 ## What It Does
 
@@ -12,7 +12,7 @@ When you invoke `/causal-inference`, the skill starts an interactive conversatio
 |-------|--------------|
 | **1. Problem Framing** | Identify your research question, treatment, outcome, and target estimand (ATE, ATT, LATE, CATE) |
 | **2. Data & Assignment** | Characterize your data structure, treatment assignment mechanism, timing, and confounders |
-| **3. Method Selection** | Navigate a decision tree to find the right method(s) for your setting |
+| **3. Method Selection** | Navigate a decision tree across reduced-form and structural approaches to find the right method(s) |
 | **4. Assumption Diagnostics** | Walk through method-specific checklists to validate your identification strategy |
 | **5. Implementation** | Get Python code templates, robustness checks, and reporting guidance |
 
@@ -86,6 +86,10 @@ The skill will ask you a series of questions to understand your research problem
 /causal-inference I'm studying whether a state-level policy reduced crime using data from all 50 states over 20 years
 ```
 
+```
+/causal-inference I need to simulate how a merger between two consumer goods firms would change prices and consumer welfare
+```
+
 ## Example Sessions
 
 See the [`examples/`](examples/) directory for full example conversations:
@@ -112,7 +116,7 @@ skills/causal-inference/
 | File | Purpose | Contents |
 |------|---------|----------|
 | `SKILL.md` | Entry point — loaded when skill is invoked | 5-phase interactive workflow, method decision tree, special topics |
-| `methods-reference.md` | Deep reference — loaded on demand | Definitions, assumptions, estimands, key references for 30+ methods |
+| `methods-reference.md` | Deep reference — loaded on demand | Definitions, assumptions, estimands, key references for 40+ methods (reduced-form + structural) |
 | `diagnostics.md` | Validation checklists — loaded during Phase 4 | Per-method diagnostic tests, robustness checks, sensitivity analysis |
 | `code-templates.md` | Implementation — loaded during Phase 5 | Python code templates, package recommendations |
 
@@ -143,6 +147,13 @@ This skill draws on the following key textbooks and survey articles:
 - Roth, Sant'Anna, Bilinski & Poe (2023). "What's Trending in Difference-in-Differences?"
 - Abadie (2021). "Using Synthetic Controls: Feasibility, Data Requirements, and Methodological Aspects"
 - Cattaneo, Idrobo & Titiunik (2019). *A Practical Introduction to Regression Discontinuity Designs*
+- Berry, Levinsohn & Pakes (1995). "Automobile Prices in Market Equilibrium"
+- Nevo (2000). "A Practitioner's Guide to Estimation of Random-Coefficients Logit Models of Demand"
+- Train (2009). *Discrete Choice Methods with Simulation*
+- Conlon & Gortmaker (2020). "Best Practices for Differentiated Products Demand Estimation with PyBLP"
+- Rust (1987). "Optimal Replacement of GMC Bus Engines: An Empirical Model of Harold Zurcher"
+- Aguirregabiria & Mira (2010). "Dynamic Discrete Choice Structural Models: A Survey"
+- Erdem & Keane (1996). "Decision-Making Under Uncertainty: Capturing Dynamic Brand Choice Processes in Turbulent Consumer Goods Markets"
 
 ## License
 
