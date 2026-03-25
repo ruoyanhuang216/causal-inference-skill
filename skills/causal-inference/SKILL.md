@@ -243,6 +243,121 @@ If the user needs flexible functional forms, heterogeneous effects, or high-dime
 | **Modified Causal Forest** | Athey, Tibshirani & Wager (2019) with local centering |
 | **Causal Discovery** | PC algorithm, GES, NOTEARS — learn DAG structure from data |
 
+#### Track G: Structural Estimation (Marketing Science / IO / Labor)
+
+If the user needs to:
+- Predict effects of **policies or interventions never observed in the data** (out-of-sample counterfactuals)
+- Model **strategic behavior** by optimizing agents (consumers, firms)
+- Decompose mechanisms (price sensitivity vs. brand loyalty vs. inertia vs. search costs)
+- Evaluate **welfare** (consumer surplus, firm profits)
+- Simulate **equilibrium** effects (e.g., what happens to competitors' prices if one firm merges?)
+
+**When structural vs. reduced-form?**
+
+Ask the user:
+- Do you need to predict effects of policies/prices/products **never seen in the data**? → Structural
+- Do you need to decompose the **mechanism** through which treatment operates? → Structural
+- Are agents in your setting **optimizing** (utility-maximizing consumers, profit-maximizing firms)? → Structural
+- Is your primary goal to estimate a **credible causal effect** of an observed treatment? → Reduced-form may suffice
+- Do you want **minimal assumptions** and high internal validity? → Reduced-form
+
+Present the trade-off:
+
+| | Reduced-Form | Structural |
+|--|-------------|-----------|
+| **Strength** | Credible identification; minimal assumptions; transparent | Out-of-sample counterfactuals; welfare analysis; mechanism decomposition |
+| **Weakness** | Limited to in-sample variation; no welfare; no mechanism | Requires strong assumptions; functional form dependence; harder to validate |
+| **Credibility** | "Let the data speak" | "Let the model speak" — credibility depends on model validity |
+
+**Structural estimation workflow** (guide the user through these steps):
+
+1. **Economic model**: Write down the agents' optimization problem (utility maximization, profit maximization, dynamic programming problem)
+2. **Equilibrium concept**: How do agents interact? (Nash equilibrium, competitive, monopolistic)
+3. **Functional form**: Specify utility/profit functions (e.g., random utility, CES, nested logit)
+4. **Identification**: What variation in the data identifies each parameter? (Critical — structural does not bypass identification)
+5. **Estimation**: Choose method based on model complexity
+6. **Validation**: Test model fit and out-of-sample prediction
+7. **Counterfactuals**: Simulate policy scenarios
+
+**G1. Demand Estimation / Discrete Choice Models**
+
+The workhorse of marketing science and IO. Consumers choose among products; observed market shares identify preference parameters.
+
+- Ask: What is the **choice set**? (Products, brands, stores, plans)
+- Ask: Do you observe **individual-level** choices or **aggregate market shares**?
+- Ask: Is the **price endogenous**? (Almost certainly yes — need instruments)
+
+| Scenario | Method |
+|----------|--------|
+| Individual-level data, few alternatives | Multinomial Logit, Conditional Logit (McFadden 1974) |
+| Individual-level, want flexible substitution | Mixed Logit / Random Coefficients Logit |
+| Aggregate market shares, many products | BLP — Berry, Levinsohn & Pakes (1995) |
+| Hierarchical choice structure | Nested Logit (e.g., choose category, then brand) |
+| Want nonparametric mixing distribution | Latent Class model |
+| Bundling / combinatorial choices | Multivariate probit; conjoint models |
+| Online/retail contexts | Consideration set models; attention models |
+
+**BLP in detail** (most important structural model in marketing/IO):
+- Inverts observed market shares to recover mean utility δ
+- Random coefficients capture heterogeneous preferences
+- IV needed for prices (common: BLP instruments, Hausman instruments, cost shifters, Gandhi-Houde differentiation IVs)
+- Estimates own- and cross-price elasticities; enables merger simulation, optimal pricing
+
+**G2. Dynamic Structural Models**
+
+When agents make decisions over time with forward-looking behavior.
+
+- Ask: Do agents in your model **anticipate the future**? (e.g., consumers timing purchases for sales, firms investing)
+- Ask: Is there a **state variable** that evolves over time? (inventory, experience, reputation)
+
+| Scenario | Method |
+|----------|--------|
+| Single-agent dynamic discrete choice | Rust (1987) nested fixed-point; estimate value function directly |
+| Want to avoid solving value function | CCP / Hotz-Miller (1993) — use conditional choice probabilities |
+| Two-step with flexible first stage | Arcidiacono & Miller (2011) EM-based CCP |
+| Dynamic games (multiple strategic agents) | Bajari, Benkard & Levin (2007) two-step; Aguirregabiria & Mira (2007) |
+| Continuous choice, dynamic | MPEC (Su & Judd 2012) — constrained optimization formulation |
+| Consumer stockpiling / purchase timing | Erdem, Imai & Keane (2003); Hendel & Nevo (2006) |
+| Technology adoption / durable goods | Song & Chintagunta (2003); Gowrisankaran & Rysman (2012) |
+
+**G3. Supply-Side / Game-Theoretic Models**
+
+| Scenario | Method |
+|----------|--------|
+| Oligopoly pricing | Nash-Bertrand (differentiated products); recover marginal costs from FOCs |
+| Merger simulation | Estimate demand, infer costs, simulate new equilibrium post-merger |
+| Entry/exit | Bresnahan & Reiss (1991); Berry (1992) entry models |
+| Auctions | Structural auction models (Guerre, Perrigne & Vuong 2000) |
+| Bargaining | Nash bargaining models (e.g., hospital-insurer negotiations) |
+| Advertising competition | Dube, Hitsch & Manchanda (2005) |
+
+**G4. Consumer Search Models**
+
+| Scenario | Method |
+|----------|--------|
+| Sequential search, known distribution | Weitzman (1979) reservation value model |
+| Search with learning about match quality | Kim, Albuquerque & Bronnenberg (2010) |
+| Directed search / consideration sets | Honka (2014); Hortacsu & Syverson (2004) |
+| Platform/marketplace search | Dinerstein, Einav, Levin & Sundaresan (2018) |
+
+**G5. Learning & Experience Models**
+
+| Scenario | Method |
+|----------|--------|
+| Bayesian learning about product quality | Erdem & Keane (1996) |
+| Learning from own experience | Crawford & Shum (2005) |
+| Social learning / word of mouth | Cai, Chen & Fang (2009) |
+| Multi-armed bandit framing | Explore-exploit models |
+
+**G6. Measurement / Latent Variable Models**
+
+| Scenario | Method |
+|----------|--------|
+| Unobserved consumer segments | Latent Class models; finite mixture models |
+| Unobserved quality/attributes | Factor-analytic models; Bayesian shrinkage |
+| State dependence vs. heterogeneity | Heckman (1981) initial conditions; Keane (1997) |
+| Brand equity measurement | Structural brand choice models with brand-specific intercepts |
+
 #### Track F: Sensitivity Analysis & Partial Identification
 
 Always recommend sensitivity analysis. Present these regardless of chosen method:
@@ -293,6 +408,12 @@ Once the method and diagnostics are confirmed, provide:
 ## Special Topics
 
 If the user's problem involves any of these, raise them proactively:
+
+### Structural vs. Reduced-Form: When to Combine
+- Many top papers combine both: use reduced-form for credible causal identification, then feed estimates into a structural model for counterfactual simulations
+- "Sufficient statistics" approach: structural counterfactuals that depend only on a few reduced-form elasticities
+- Example: estimate demand elasticities via IV/RCT, then simulate optimal pricing structurally
+- When in doubt, start with reduced-form for credibility, add structure only when needed for the policy question
 
 ### Multiple Treatments / Multivalued Treatment
 - Generalized propensity score (Hirano & Imbens 2004)

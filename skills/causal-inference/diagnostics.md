@@ -174,7 +174,50 @@ This document provides method-specific diagnostic checklists. For each method, i
 
 ---
 
-## 10. General Robustness Checks (Apply to All Methods)
+## 10. Structural Estimation
+
+### Model Specification
+- [ ] **Economic motivation**: Is the model grounded in economic theory? Can you write down the agent's optimization problem?
+- [ ] **Functional form sensitivity**: Try alternative utility specifications (linear, log, CES). Do key results (elasticities, counterfactuals) change?
+- [ ] **Distributional assumptions**: For random coefficients, try Normal, Log-Normal, triangular. Test sensitivity.
+- [ ] **Nesting structure**: For nested logit, try alternative nesting structures. Results should be robust.
+- [ ] **IIA test**: For logit models, test IIA via Hausman-McFadden test or compare with more flexible models.
+
+### Identification & Instruments (Demand Estimation)
+- [ ] **First-stage relevance**: Instruments must predict prices. Report first-stage F-statistic.
+- [ ] **Instrument validity**: Argue why instruments satisfy exclusion (e.g., cost shifters don't directly affect utility). Do BLP instruments, Hausman instruments, or differentiation IVs give similar results?
+- [ ] **Overidentification test**: If using GMM with more instruments than endogenous variables, report Hansen J.
+- [ ] **Weak instruments**: If first stage is weak, estimates (especially random coefficients) may be unreliable.
+
+### Model Fit
+- [ ] **In-sample fit**: Compare predicted market shares to observed. Report RMSE or correlation. Plot predicted vs. actual.
+- [ ] **Substitution patterns**: Do estimated own-price elasticities have correct sign and reasonable magnitude? Are cross-price elasticities sensible? (Close substitutes should have higher cross-elasticity.)
+- [ ] **Demand curves**: Plot estimated demand curves. Do they look reasonable?
+- [ ] **Hit rate**: For individual-level choice models, what fraction of choices does the model predict correctly?
+
+### Out-of-Sample Validation
+- [ ] **Holdout sample**: Estimate on subset of data, predict on holdout. Compare fit.
+- [ ] **Temporal validation**: Estimate on early periods, predict later periods.
+- [ ] **Cross-market validation**: Estimate on some markets, predict others.
+- [ ] **Known policy changes**: If a price change or product entry occurred, does the model predict the observed response?
+
+### Counterfactual Robustness
+- [ ] **Multiple specifications**: Run counterfactuals under alternative model specifications. Are qualitative conclusions robust?
+- [ ] **Supply-side assumptions**: Try Bertrand, Cournot, collusion. How much do counterfactuals depend on the assumed conduct?
+- [ ] **Cost recovery**: Are implied marginal costs reasonable? Negative marginal costs indicate model misspecification.
+- [ ] **Equilibrium existence and uniqueness**: For supply-side counterfactuals, verify that the computed equilibrium exists and is unique (or discuss multiplicity).
+- [ ] **Confidence intervals on counterfactuals**: Propagate parameter uncertainty through the counterfactual simulation (delta method, bootstrap, or Bayesian posterior).
+
+### Dynamic Model Specific
+- [ ] **State space coverage**: Are there enough observations in each state to identify the model? Sparse states lead to noisy CCP estimates.
+- [ ] **Discount factor sensitivity**: Vary beta (e.g., 0.90, 0.95, 0.99). How sensitive are results?
+- [ ] **Forward-looking vs. myopic**: Compare dynamic model to static model. Is the dynamic component empirically important?
+- [ ] **Policy function check**: Do estimated policy functions match observed choice patterns in the data?
+- [ ] **Simulation test**: Simulate data from estimated model. Re-estimate on simulated data. Do you recover parameters? (Monte Carlo validation.)
+
+---
+
+## 11. General Robustness Checks (Apply to All Methods)
 
 - [ ] **Placebo tests**: Apply method to outcomes, periods, or populations where no effect is expected.
 - [ ] **Subsample stability**: Re-estimate on subsamples (e.g., by region, time period, demographic group).

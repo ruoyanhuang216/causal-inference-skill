@@ -28,6 +28,7 @@ The skill covers the full landscape of modern causal inference methods:
 - **Selection on Observables**: OLS, PSM, CEM, Mahalanobis Matching, IPW, AIPW/Doubly Robust, Entropy Balancing, Overlap Weighting
 - **ML-Enhanced**: Double/Debiased ML, Causal Forest, BART, TMLE, Meta-Learners (S/T/X/R/DR-learner)
 - **DAG/Structural**: Back-door/Front-door criteria, do-calculus, SEM, Causal Mediation
+- **Structural Estimation**: BLP Demand, Nested/Mixed Logit, Dynamic Discrete Choice (Rust, Hotz-Miller, MPEC), Nash-Bertrand Pricing, Merger Simulation, Entry Models, Consumer Search (Weitzman), Bayesian Learning (Erdem-Keane), Latent Class Models
 - **Panel Methods**: Two-Way FE, Correlated Random Effects, Arellano-Bond/Blundell-Bond GMM
 - **Time Series**: Interrupted Time Series, Comparative ITS, CausalImpact (Bayesian Structural)
 - **Sensitivity & Bounds**: Oster's delta, Rosenbaum bounds, Manski bounds, Lee bounds, Cinelli-Hazlett, E-value
@@ -96,6 +97,7 @@ See the [`examples/`](examples/) directory for full example conversations:
 | [Immigration & Wages](examples/immigration-iv.md) | Effect of immigration on wages with a shift-share instrument | Shift-Share IV |
 | [California Smoking Ban](examples/smoking-ban-scm.md) | Single treated state, donor pool of other states | Synthetic Control |
 | [Job Training](examples/job-training-ml.md) | Heterogeneous treatment effects from an RCT | Causal Forest + DML |
+| [Cereal Demand](examples/cereal-demand-blp.md) | Pricing and merger simulation in consumer packaged goods | BLP Demand + Merger Simulation |
 
 ## Skill File Structure
 

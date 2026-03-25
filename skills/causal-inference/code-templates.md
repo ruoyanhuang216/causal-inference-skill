@@ -768,6 +768,231 @@ print(lb_test)
 
 ---
 
+## 12. Structural Estimation: BLP Demand
+
+### BLP with PyBLP
+```python
+import pyblp
+import numpy as np
+import pandas as pd
+
+# ── Data preparation ──
+# product_data: DataFrame with columns:
+#   market_ids, product_ids, shares, prices, x1, x2, ..., demand_instruments0, ...
+# Must include: market shares, product characteristics, prices, instruments
+
+# ── Define the problem ──
+# Formulation: (X1 for linear params, X2 for random coefficients, X3 for supply)
+product_formulations = (
+    pyblp.Formulation('1 + x1 + x2', absorb='C(brand_id)'),  # X1: linear in beta (+ brand FE)
+    pyblp.Formulation('1 + x1 + prices'),                      # X2: random coefficients on these
+)
+
+# Integration: Monte Carlo or product rule for simulating heterogeneity
+mc_integration = pyblp.Integration('halton', size=200, specification_options={'seed': 0})
+
+# Build the problem
+problem = pyblp.Problem(
+    product_formulations,
+    product_data,
+    integration=mc_integration
+)
+print(problem)
+
+# ── Solve (estimate) ──
+# Initial guess for sigma (random coefficient SDs) and pi (demographic interactions)
+initial_sigma = np.diag([0.5, 0.5, 0.5])  # diagonal = independent random coefficients
+
+results = problem.solve(
+    sigma=initial_sigma,
+    optimization=pyblp.Optimization('bfgs', {'gtol': 1e-8}),
+    iteration=pyblp.Iteration('squarem', {'atol': 1e-14}),  # contraction mapping for delta
+    method='1s'  # '1s' for one-step GMM, '2s' for efficient two-step
+)
+print(results)
+
+# ── Key outputs ──
+# Price coefficient and random coefficient SDs
+print('\nParameter estimates:')
+print(results.beta)     # linear parameters
+print(results.sigma)    # random coefficient standard deviations
+
+# ── Elasticities ──
+elasticities = results.compute_elasticities()
+# Own-price elasticities (diagonal of each market's elasticity matrix)
+own_elasticities = results.extract_diagonal_means(elasticities)
+print(f'\nMean own-price elasticity: {own_elasticities.mean():.3f}')
+
+# Aggregate elasticity matrix for a specific market
+market_id = product_data['market_ids'].unique()[0]
+market_mask = product_data['market_ids'] == market_id
+market_elasticities = elasticities[market_mask][:, market_mask]
+print(f'\nElasticity matrix for market {market_id}:')
+print(pd.DataFrame(market_elasticities,
+                    index=product_data.loc[market_mask, 'product_ids'],
+                    columns=product_data.loc[market_mask, 'product_ids']).round(3))
+
+# ── Consumer surplus ──
+cs = results.compute_consumer_surpluses()
+print(f'\nMean consumer surplus: {cs.mean():.2f}')
+
+# ── Markup and marginal cost recovery (supply side) ──
+# Assuming Nash-Bertrand pricing
+costs = results.compute_costs()  # implied marginal costs
+markups = results.compute_markups()
+print(f'Mean markup: {markups.mean():.3f}')
+print(f'Mean marginal cost: {costs.mean():.2f}')
+
+# Check: any negative marginal costs? (red flag)
+print(f'Negative marginal costs: {(costs < 0).sum()} / {len(costs)}')
+```
+
+### BLP Counterfactuals: Merger Simulation
+```python
+# ── Merger simulation ──
+# Suppose firms 1 and 2 merge. Update ownership matrix.
+
+# Current ownership: product_data['firm_ids']
+# New ownership: change firm 2's products to firm 1
+product_data_merger = product_data.copy()
+product_data_merger.loc[product_data_merger['firm_ids'] == 2, 'firm_ids'] = 1
+
+# Solve for new equilibrium prices
+merger_results = results.solve_approximate_merger(
+    product_data_merger[['firm_ids']],
+    iteration=pyblp.Iteration('simple', {'atol': 1e-12})
+)
+
+# Price changes
+delta_prices = merger_results.product_data['prices'] - product_data['prices']
+print('Price changes from merger:')
+print(delta_prices.describe())
+
+# Consumer surplus change
+cs_post = results.compute_consumer_surpluses(prices=merger_results.product_data['prices'])
+cs_change = (cs_post - cs).mean()
+print(f'Change in mean consumer surplus: {cs_change:.2f}')
+```
+
+### Multinomial Logit (Individual-Level)
+```python
+import statsmodels.api as sm
+from scipy.optimize import minimize
+from scipy.special import logsumexp
+import numpy as np
+
+# ── Data: long format ──
+# Each row = (individual i, alternative j)
+# Columns: choice (0/1), price, x1, x2, ...
+
+def log_likelihood_logit(params, X, choice, n_individuals, n_alternatives):
+    """Conditional logit log-likelihood."""
+    V = X @ params  # utilities
+    V = V.reshape(n_individuals, n_alternatives)
+    choice_mat = choice.reshape(n_individuals, n_alternatives)
+
+    # Log-sum-exp for numerical stability
+    log_denom = logsumexp(V, axis=1, keepdims=True)
+    log_probs = V - log_denom
+
+    # Log-likelihood
+    ll = np.sum(choice_mat * log_probs)
+    return -ll  # minimize negative LL
+
+# Estimate
+X = df[['price', 'x1', 'x2']].values
+choice = df['choice'].values
+n_ind = df['individual_id'].nunique()
+n_alt = df['alternative_id'].nunique()
+
+result = minimize(log_likelihood_logit, x0=np.zeros(X.shape[1]),
+                  args=(X, choice, n_ind, n_alt), method='BFGS')
+print('Parameters:', result.x)
+print('Price coefficient:', result.x[0])
+
+# Alternatively, use a package
+# pip install xlogit
+from xlogit import MultinomialLogit
+
+model = MultinomialLogit()
+model.fit(X=df[['x1', 'x2']], y=df['choice'], varnames=['x1', 'x2'],
+          ids=df['individual_id'], alts=df['alternative_id'],
+          price=df['price'])
+model.summary()
+```
+
+### Dynamic Discrete Choice (Rust-Style)
+```python
+import numpy as np
+from scipy.special import logsumexp
+from scipy.optimize import minimize
+
+# ── Simplified bus engine replacement example ──
+# State: mileage (discretized into bins)
+# Actions: {0: keep, 1: replace}
+# Utility: u(keep, s) = -theta_1 * s (maintenance cost increases with mileage)
+#          u(replace, s) = -RC (replacement cost, independent of state)
+
+n_states = 50  # mileage bins
+beta = 0.99    # discount factor
+
+def solve_value_function(theta_1, RC, trans_probs, beta=0.99, tol=1e-10):
+    """Solve for EV (expected value) via value function iteration."""
+    EV = np.zeros(n_states)
+    for _ in range(10000):
+        # Flow utility for each action in each state
+        u_keep = -theta_1 * np.arange(n_states)
+        u_replace = -RC * np.ones(n_states)
+
+        # Choice-specific value functions
+        v_keep = u_keep + beta * trans_probs @ EV
+        v_replace = u_replace + beta * trans_probs[0] @ EV  # reset to state 0 after replacement
+
+        # Update EV (using logsum formula for Type-I EV errors)
+        V = np.column_stack([v_keep, v_replace])
+        EV_new = logsumexp(V, axis=1)
+
+        if np.max(np.abs(EV_new - EV)) < tol:
+            break
+        EV = EV_new
+    return EV
+
+def ccp_from_EV(theta_1, RC, trans_probs, EV):
+    """Compute conditional choice probabilities from EV."""
+    u_keep = -theta_1 * np.arange(n_states)
+    u_replace = -RC * np.ones(n_states)
+
+    v_keep = u_keep + beta * trans_probs @ EV
+    v_replace = u_replace + beta * trans_probs[0] @ EV
+
+    # Probability of replacement
+    p_replace = 1 / (1 + np.exp(v_keep - v_replace))
+    return p_replace
+
+def nfxp_likelihood(params, data_states, data_actions, trans_probs):
+    """NFXP: nested fixed point log-likelihood."""
+    theta_1, RC = params
+    if theta_1 < 0 or RC < 0:
+        return 1e10
+
+    EV = solve_value_function(theta_1, RC, trans_probs)
+    p_replace = ccp_from_EV(theta_1, RC, trans_probs, EV)
+
+    # Likelihood
+    p_action = np.where(data_actions == 1, p_replace[data_states], 1 - p_replace[data_states])
+    ll = np.sum(np.log(np.clip(p_action, 1e-15, 1)))
+    return -ll
+
+# Estimate
+result = minimize(nfxp_likelihood, x0=[0.01, 5.0],
+                  args=(data_states, data_actions, trans_probs),
+                  method='Nelder-Mead')
+print(f'theta_1 (maintenance cost): {result.x[0]:.4f}')
+print(f'RC (replacement cost): {result.x[1]:.2f}')
+```
+
+---
+
 ## Key Python Packages Summary
 
 | Method | Primary Package | Alternative |
@@ -786,3 +1011,7 @@ print(lb_test)
 | Mediation | `statsmodels` (manual) | `pingouin` |
 | CausalImpact | `causalimpact` | `tfcausalimpact` |
 | ITS | `statsmodels` | — |
+| BLP Demand | `pyblp` | manual GMM via scipy |
+| Discrete Choice | `xlogit`, `biogeme` | scipy (manual MLE) |
+| Dynamic Structural | scipy, `numba` | `JAX` |
+| Structural (general) | `scipy.optimize`, `JAX` | `Pyomo`, `casadi` (MPEC) |

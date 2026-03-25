@@ -487,3 +487,251 @@ where D_t = 1 after intervention, T0 is intervention time.
 - Results are typically up to Markov equivalence class (can't distinguish all edge orientations)
 - Requires strong assumptions (faithfulness, causal sufficiency)
 - Best used for hypothesis generation, not confirmation
+
+---
+
+## 13. Structural Estimation
+
+Structural estimation uses economic theory to specify agents' optimization problems and equilibrium interactions. The model is estimated by matching model-implied moments (market shares, choice probabilities, prices) to data. Estimated parameters enable counterfactual simulations that go beyond observed variation.
+
+### 13.1 Discrete Choice Demand Models
+
+#### Multinomial / Conditional Logit (McFadden 1974)
+
+**Definition**: Consumer i chooses product j that maximizes utility:
+```
+U_ij = X_j * beta + alpha * p_j + xi_j + epsilon_ij
+```
+where epsilon_ij is i.i.d. Type-I Extreme Value. Closed-form choice probabilities via logit formula.
+
+**Limitations**:
+- **IIA (Independence of Irrelevant Alternatives)**: Proportional substitution — removing a product redistributes its share proportionally. Unrealistic for differentiated products.
+- No unobserved consumer heterogeneity
+
+**Use case**: Simple baseline; individual-level data with few alternatives; good for conjoint analysis.
+
+#### Mixed Logit / Random Coefficients Logit
+
+**Definition**: Allow preference parameters to vary across consumers:
+```
+U_ij = X_j * beta_i + alpha_i * p_j + xi_j + epsilon_ij
+beta_i ~ F(theta)  (e.g., Normal, Log-Normal)
+```
+Choice probabilities require simulation (no closed form).
+
+**Advantages**: Flexible substitution patterns; captures preference heterogeneity; nests logit and probit as special cases.
+
+**Estimation**: Maximum Simulated Likelihood (MSL) or Method of Simulated Moments.
+
+**Key Reference**: Train (2009), *Discrete Choice Methods with Simulation*
+
+#### BLP — Berry, Levinsohn & Pakes (1995)
+
+**Definition**: Aggregate-level demand estimation for differentiated products. The key innovation: use market share data (not individual choices) and handle price endogeneity.
+
+**Model**:
+```
+U_ij = delta_j + mu_ij + epsilon_ij
+delta_j = X_j * beta - alpha * p_j + xi_j    (mean utility)
+mu_ij = X_j * Sigma * v_i                      (individual deviation)
+```
+
+**Estimation algorithm**:
+1. Guess nonlinear parameters (Sigma)
+2. For each guess, invert market shares to recover delta_j (BLP contraction mapping)
+3. Use IV regression of delta_j on (X_j, p_j) to recover (beta, alpha) and residual xi_j
+4. Form GMM objective: E[Z' * xi] = 0
+5. Optimize over Sigma to minimize GMM objective
+
+**Instruments for price**:
+- **BLP instruments**: Characteristics of competing products in the same market (sums, counts)
+- **Hausman instruments**: Prices of the same product in other markets (common cost shocks)
+- **Cost shifters**: Input costs, tariffs, exchange rates
+- **Gandhi-Houde (2020) differentiation IVs**: Functions of product distances in characteristic space — better captures local competition
+- **Optimal instruments**: Chamberlain (1987) / Reynaert & Verboven (2014)
+
+**Key outputs**:
+- Own-price elasticities
+- Cross-price elasticities (flexible substitution, not IIA)
+- Consumer surplus
+- Inputs for merger simulation, optimal pricing, product design
+
+**Key References**:
+- Berry (1994), "Estimating Discrete-Choice Models of Product Differentiation"
+- Berry, Levinsohn & Pakes (1995), "Automobile Prices in Market Equilibrium"
+- Nevo (2000), "A Practitioner's Guide to Estimation of Random-Coefficients Logit Models of Demand"
+- Conlon & Gortmaker (2020), "Best Practices for Differentiated Products Demand Estimation with PyBLP"
+
+#### Nested Logit
+
+**Definition**: Products are grouped into nests (categories). Within-nest substitution is higher than across-nest substitution. The nesting parameter sigma in [0,1] governs substitution — sigma=0 is logit, sigma→1 means all substitution is within-nest.
+
+**Advantage over logit**: Breaks IIA across nests while maintaining tractability.
+
+**Use case**: Clear hierarchical choice structure (e.g., inside vs. outside good; car type → brand).
+
+#### Latent Class Models
+
+**Definition**: Assume K discrete consumer types (segments), each with distinct preference parameters. Segment membership is probabilistic.
+
+**Estimation**: EM algorithm or direct MLE. Choose K via BIC/AIC or cross-validation.
+
+**Use case**: Marketing segmentation; targeting; when continuous heterogeneity distributions are hard to justify.
+
+### 13.2 Supply-Side Models
+
+#### Nash-Bertrand Pricing
+
+**Definition**: Firms simultaneously set prices to maximize profits. For multi-product firms, FOCs account for cannibalization across own products.
+
+**First-order conditions**:
+```
+p - mc = -[Ownership * dS/dp]^{-1} * S
+```
+where Ownership is a matrix indicating which firm owns which product, dS/dp is the matrix of share derivatives (from demand), and S is the vector of market shares.
+
+**Key use**: Back out marginal costs from observed prices + estimated demand. Then simulate counterfactuals.
+
+#### Merger Simulation
+
+**Steps**:
+1. Estimate demand (e.g., BLP)
+2. Recover marginal costs from supply-side FOCs under pre-merger ownership
+3. Change ownership matrix to reflect merger
+4. Solve for new equilibrium prices (and quantities)
+5. Compute changes in prices, consumer surplus, profits
+
+**Key Reference**: Nevo (2000); Werden & Froeb (1994)
+
+#### Entry / Exit Models
+
+**Definition**: Firms enter a market if expected profits exceed a fixed cost. Observed entry patterns identify profit function parameters and fixed costs.
+
+- **Bresnahan & Reiss (1991)**: How many firms can a market support?
+- **Berry (1992)**: Entry with heterogeneous firms
+- **Seim (2006)**: Entry with spatial differentiation
+
+### 13.3 Dynamic Structural Models
+
+#### Single-Agent Dynamic Discrete Choice
+
+**Framework**: Agent chooses action a_t in each period to maximize:
+```
+max E[ sum_{t=0}^{inf} beta^t * u(a_t, s_t, epsilon_t; theta) ]
+```
+subject to state transitions s_{t+1} = f(s_t, a_t).
+
+**Key challenge**: Solving the dynamic programming (DP) problem — computing the value function.
+
+#### Nested Fixed Point (NFXP) — Rust (1987)
+
+**Approach**: For each candidate parameter theta:
+1. Solve the full DP problem (value function iteration)
+2. Compute choice probabilities
+3. Evaluate likelihood
+4. Iterate on theta
+
+**Pros**: Consistent, asymptotically efficient.
+**Cons**: Computationally expensive — must solve DP at every parameter guess.
+
+**Classic application**: Rust (1987) — bus engine replacement decisions.
+
+#### CCP Estimation — Hotz & Miller (1993)
+
+**Key insight**: The value function can be expressed in terms of observable **conditional choice probabilities** (CCPs). No need to solve the DP directly.
+
+**Steps**:
+1. **First stage**: Estimate CCPs nonparametrically from data (e.g., frequency of each choice in each state)
+2. **Second stage**: Use the CCP-to-value-function mapping to form moment conditions; estimate structural parameters
+
+**Pros**: Much faster — avoids repeated DP solution. Flexible.
+**Cons**: First-stage CCP estimates can be noisy in sparse states; finite-dependence property needed for some formulations.
+
+**Extensions**:
+- Arcidiacono & Miller (2011): EM algorithm for unobserved types
+- Arcidiacono & Ellickson (2011): Practical guide
+
+#### MPEC — Mathematical Programming with Equilibrium Constraints (Su & Judd 2012)
+
+**Approach**: Formulate estimation as a constrained optimization problem:
+- Objective: Minimize distance between model and data moments
+- Constraints: Bellman equation must hold (value function is consistent with policy)
+
+**Advantage**: Often faster and more robust than NFXP; can use off-the-shelf optimizers (KNITRO, IPOPT).
+
+#### Dynamic Games
+
+When multiple strategic agents interact over time:
+- **Bajari, Benkard & Levin (2007)**: Two-step estimator. First estimate policy functions, then recover payoff parameters.
+- **Aguirregabiria & Mira (2007)**: Sequential estimation with CCP updates.
+- **Pakes, Ostrovsky & Berry (2007)**: Simple estimators for dynamic games.
+
+**Applications**: Store entry/exit, dynamic pricing, advertising dynamics, R&D competition.
+
+### 13.4 Consumer Search Models
+
+#### Sequential Search — Weitzman (1979)
+
+**Framework**: Consumer draws utility from each option sequentially, paying a search cost c per draw. Optimal rule: search in order of reservation values; stop when best found utility exceeds next reservation value.
+
+**Identification**: Search costs identified from: how many options consumers examine, the order of search, and the relationship between chosen option and set size.
+
+**Key References**:
+- Hortacsu & Syverson (2004): Search in financial markets
+- Honka (2014): Consumer search for insurance
+- Kim, Albuquerque & Bronnenberg (2010): Online search with learning
+- De los Santos, Hortacsu & Wildenbeest (2012): Testing search models
+
+#### Consideration Set Models
+
+**Definition**: Consumers first form a consideration set (limited attention), then choose from it. Separates awareness/attention from preference.
+
+**Identification**: Requires data on both what was considered and what was chosen (click data, eye tracking), or can be partially identified from choice data alone under restrictions.
+
+### 13.5 Learning Models
+
+#### Bayesian Learning — Erdem & Keane (1996)
+
+**Framework**: Consumers have prior beliefs about product quality. Each purchase/signal updates beliefs via Bayes' rule. Consumers optimally trade off exploration (learning about uncertain products) vs. exploitation (choosing the known-best product).
+
+**Identification**: Over time, consumers who are learning show:
+- Decreasing probability of switching
+- Increasing purchase frequency of preferred brands
+- Responsiveness to signals (advertising, WOM) decreasing over time
+
+**Applications**: New product adoption, advertising effectiveness, experience goods, physician prescribing.
+
+### 13.6 Structural Estimation: Identification
+
+**Critical principle**: Structural estimation does NOT bypass the need for identification. Every parameter must be identified from variation in the data.
+
+**Common identification sources**:
+| Parameter | Identified from |
+|-----------|----------------|
+| Price coefficient (alpha) | Price variation + instruments (cost shifters, BLP IVs) |
+| Preference heterogeneity (Sigma) | Variation in substitution patterns across markets |
+| Search costs | Number of alternatives examined; order of search |
+| Switching costs | Excess persistence in choices beyond preference heterogeneity |
+| Discount factor (beta) | Typically calibrated (e.g., beta=0.99); hard to identify separately from other parameters |
+| Fixed costs (entry) | Observed entry/exit decisions across markets of varying profitability |
+| Learning speed | Rate at which choice behavior stabilizes over time |
+
+### 13.7 Structural Estimation: Practical Considerations
+
+**Common estimation methods**:
+| Method | When to use |
+|--------|-------------|
+| **MLE / Simulated MLE** | Likelihood is tractable (possibly via simulation); most efficient |
+| **GMM / Simulated GMM** | Moment conditions available; BLP uses GMM |
+| **Method of Simulated Moments (MSM)** | Match model-simulated moments to data moments |
+| **Indirect Inference** | Estimate auxiliary model on real and simulated data; match auxiliary parameters |
+| **Bayesian (MCMC)** | Want full posterior; complex models; hierarchical structures |
+| **MPEC** | Dynamic models; formulate as constrained optimization |
+
+**Computational tools** (Python):
+- `PyBLP` — BLP demand estimation (Conlon & Gortmaker)
+- `scipy.optimize` — general purpose optimization
+- `JAX` / `autograd` — automatic differentiation for GMM/MLE
+- `Pyomo` / `casadi` — MPEC formulation
+- `numba` — JIT compilation for value function iteration
+- `emcee` / `PyMC` — Bayesian MCMC estimation
