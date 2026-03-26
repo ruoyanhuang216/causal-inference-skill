@@ -107,10 +107,32 @@ See the [`examples/`](examples/) directory for full example conversations:
 
 ### Sample Output
 
-The [`examples/sample-output/`](examples/sample-output/) directory contains a complete example of the Phase 7 output for the minimum wage DiD analysis:
+The [`examples/sample-output/`](examples/sample-output/) directory shows the complete Phase 7 deliverables for the minimum wage DiD example. The skill generates three output formats:
 
-- **[report.md](examples/sample-output/report.md)** — Full analysis report with executive summary, main results, 7-layer robustness dashboard, limitations, and reproduction code
-- **[presentation.html](examples/sample-output/presentation.html)** — 10-slide HTML presentation deck (open in browser, navigate with arrow keys)
+| File | Format | Purpose | How to View |
+|------|--------|---------|-------------|
+| [report.md](examples/sample-output/report.md) | Markdown | Full analysis report with embedded figures — version-controllable, editable, renders on GitHub | GitHub, VS Code, any markdown viewer |
+| [report.pdf](examples/sample-output/report.pdf) | PDF | Polished report with inline SVG charts — best for sharing and printing | Any PDF reader |
+| [presentation.html](examples/sample-output/presentation.html) | HTML | 10-slide interactive presentation deck — zero dependencies, runs in browser | Open in any browser; navigate with arrow keys or click |
+
+**Report contents** (all three formats):
+- Executive summary with headline estimate
+- Research design: hypothesis, identification strategy, assumptions
+- Main results table with event study figure
+- 7-layer robustness analysis: identification threats, specification curve (48 specs), sample robustness (leave-one-out), inference (wild bootstrap, randomization inference), sensitivity to unobservables (Oster's δ, Cinelli-Hazlett contour), placebo tests, cross-method forest plot
+- Robustness dashboard with pass/flag status
+- Verdict (STRONG / MODERATE / SUGGESTIVE)
+- Limitations and policy implications
+- Reproduction code (collapsible appendix)
+
+**Figures** ([`figures/`](examples/sample-output/figures/) directory):
+- `event_study.png` — Dynamic treatment effects with pre/post coefficients and 95% CIs
+- `specification_curve.png` — 48 specifications sorted by estimate, preferred highlighted
+- `sensitivity_contour.png` — Cinelli-Hazlett omitted variable bias contour with covariate benchmarks
+- `placebo_outcomes.png` — Real outcome vs. placebo outcomes bar chart
+- `placebo_timing.png` — Effect at shifted treatment dates
+- `leave_one_out.png` — Estimate stability when dropping each state
+- `cross_method_forest.png` — Forest plot comparing 5 identification strategies
 
 ## Skill File Structure
 
