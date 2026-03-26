@@ -183,11 +183,9 @@ sa = pf.feols(
 
 **Main result**: ATT = -0.0147, 95% CI [-0.025, -0.004], p = 0.007. Restaurant employment fell by ~1.5%.
 
-![Main result with headline estimate](https://github.com/ruoyanhuang216/causal-inference-skill/blob/main/examples/sample-output/figures/main_result.png?raw=true)
+The skill generates an event study showing no pre-trends and a gradual emergence of the negative effect:
 
-The event study shows no pre-trends and a gradual emergence of the negative effect:
-
-![Event study — pre-treatment coefficients near zero, post-treatment negative](https://github.com/ruoyanhuang216/causal-inference-skill/blob/main/examples/sample-output/figures/event_study.png?raw=true)
+![Figure 1: Event study — pre-treatment coefficients near zero, post-treatment effects emerge gradually](https://github.com/ruoyanhuang216/causal-inference-skill/blob/main/examples/sample-output/figures/fig1_event_study.png?raw=true)
 
 ---
 
@@ -209,7 +207,7 @@ This is where the skill really shines. It walks through robustness checks **inte
 
 The skill generates a **specification curve** — the same estimate computed 48 different ways:
 
-![Specification curve — 48 specifications sorted by estimate, preferred highlighted in red](https://github.com/ruoyanhuang216/causal-inference-skill/blob/main/examples/sample-output/figures/specification_curve.png?raw=true)
+![Figure 2: Specification curve — 48 specifications sorted by estimate, preferred in red, significant in blue](https://github.com/ruoyanhuang216/causal-inference-skill/blob/main/examples/sample-output/figures/fig2_specification_curve.png?raw=true)
 
 Across 48 specifications varying the outcome (levels, logs, IHS), controls, fixed effects, clustering, and estimator — **all 48 are negative, and 88% are statistically significant**. The result is not fragile.
 
@@ -219,30 +217,21 @@ No single state drives the result. Dropping California (the most influential sta
 
 #### Layer 5: Sensitivity to Unobservables
 
-This is the "how much hidden bias would it take?" layer:
+This is the "how much hidden bias would it take?" layer. Oster's delta = 2.34 means unobservables would need 2.3x the explanatory power of all observed controls to explain away the result. The Cinelli-Hazlett contour plot shows all observed covariate benchmarks fall well inside the robust region:
 
-- **Oster's delta = 2.34** — unobservables would need 2.3x the explanatory power of all observed controls to explain away the result
-- **Robustness Value = 0.089** — exceeds the strongest observed confounder (GDP growth, partial R² = 0.041)
-
-![Sensitivity cards — Oster's delta and Robustness Value](https://github.com/ruoyanhuang216/causal-inference-skill/blob/main/examples/sample-output/figures/sensitivity_cards.png?raw=true)
-
-![Sensitivity contour plot — Cinelli & Hazlett with covariate benchmarks](https://github.com/ruoyanhuang216/causal-inference-skill/blob/main/examples/sample-output/figures/sensitivity_contour.png?raw=true)
+![Figure 3: Sensitivity contour — Cinelli & Hazlett (2020) with covariate benchmarks in the robust region](https://github.com/ruoyanhuang216/causal-inference-skill/blob/main/examples/sample-output/figures/fig3_sensitivity_contour.png?raw=true)
 
 #### Layer 6: Placebo Tests
 
-![Placebo outcomes and timing tests](https://github.com/ruoyanhuang216/causal-inference-skill/blob/main/examples/sample-output/figures/placebo_outcomes.png?raw=true)
+Applying the same DiD to mining, finance, and government employment yields null results. The method only "finds" an effect where one should exist. All 6 placebo tests pass:
 
-Applying the same DiD to mining, finance, and government employment yields null results. The method only "finds" an effect where one should exist. All 6 placebo tests pass.
+![Figure 4: Placebo outcomes and timing tests — only the real outcome shows a significant effect](https://github.com/ruoyanhuang216/causal-inference-skill/blob/main/examples/sample-output/figures/fig4_placebo_tests.png?raw=true)
 
 #### Layer 7: Cross-Method Comparison
 
-![Forest plot — 5 identification strategies all agree](https://github.com/ruoyanhuang216/causal-inference-skill/blob/main/examples/sample-output/figures/cross_method_forest.png?raw=true)
+Five methods with different identifying assumptions all agree: the effect is negative, in the range [-0.016, -0.009], and statistically significant:
 
-Five methods with different identifying assumptions all agree: the effect is negative, in the range [-0.016, -0.009], and statistically significant.
-
-And the skill compiles it all into a robustness dashboard:
-
-![Robustness dashboard — all 7 dimensions pass](https://github.com/ruoyanhuang216/causal-inference-skill/blob/main/examples/sample-output/figures/robustness_dashboard.png?raw=true)
+![Figure 5: Forest plot — 5 identification strategies all produce negative, significant estimates](https://github.com/ruoyanhuang216/causal-inference-skill/blob/main/examples/sample-output/figures/fig5_cross_method_forest.png?raw=true)
 
 ---
 
