@@ -105,6 +105,13 @@ See the [`examples/`](examples/) directory for full example conversations:
 | [Job Training](examples/job-training-ml.md) | Heterogeneous treatment effects from an RCT | Causal Forest + DML |
 | [Cereal Demand](examples/cereal-demand-blp.md) | Pricing and merger simulation in consumer packaged goods | BLP Demand + Merger Simulation |
 
+### Sample Output
+
+The [`examples/sample-output/`](examples/sample-output/) directory contains a complete example of the Phase 7 output for the minimum wage DiD analysis:
+
+- **[report.md](examples/sample-output/report.md)** — Full analysis report with executive summary, main results, 7-layer robustness dashboard, limitations, and reproduction code
+- **[presentation.html](examples/sample-output/presentation.html)** — 10-slide HTML presentation deck (open in browser, navigate with arrow keys)
+
 ## Skill File Structure
 
 ```

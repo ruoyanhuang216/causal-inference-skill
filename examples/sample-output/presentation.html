@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Effect of Minimum Wage on Restaurant Employment</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0a0a0f;
+    --surface: #141420;
+    --text: #e8e8f0;
+    --muted: #8888a0;
+    --accent: #6366f1;
+    --accent2: #818cf8;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+  }
+  html, body { height: 100%; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+  .deck { height: 100vh; width: 100vw; position: relative; }
+  .slide { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; padding: 5vh 8vw; opacity: 0; pointer-events: none; transition: opacity 0.6s ease, transform 0.6s ease; transform: translateY(20px); }
+  .slide.active { opacity: 1; pointer-events: auto; transform: translateY(0); }
+  h1 { font-size: clamp(28px, 4vw, 56px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 1.5rem; }
+  h2 { font-size: clamp(22px, 2.8vw, 40px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 1.2rem; color: var(--accent2); }
+  h3 { font-size: clamp(16px, 1.8vw, 26px); font-weight: 500; margin-bottom: 0.8rem; color: var(--muted); }
+  p, li { font-size: clamp(14px, 1.4vw, 20px); line-height: 1.6; color: var(--muted); }
+  ul { list-style: none; padding: 0; }
+  ul li { padding: 0.4em 0; padding-left: 1.5em; position: relative; }
+  ul li::before { content: ''; position: absolute; left: 0; top: 0.7em; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .big-number { font-size: clamp(48px, 8vw, 120px); font-weight: 800; letter-spacing: -0.04em; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1; }
+  .ci { font-size: clamp(18px, 2vw, 28px); color: var(--muted); font-weight: 400; margin-top: 0.5rem; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 2rem; }
+  .stat-card { background: var(--surface); border-radius: 12px; padding: 1.5rem; border: 1px solid rgba(99,102,241,0.15); }
+  .stat-card .label { font-size: clamp(11px, 1vw, 14px); text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.5rem; }
+  .stat-card .value { font-size: clamp(24px, 3vw, 42px); font-weight: 700; color: var(--text); }
+  table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: clamp(12px, 1.2vw, 16px); }
+  th { text-align: left; padding: 0.6rem 1rem; color: var(--muted); font-weight: 500; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: clamp(10px, 1vw, 13px); text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 0.6rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .pass { color: var(--green); font-weight: 600; }
+  .flag { color: var(--amber); font-weight: 600; }
+  .badge { display: inline-block; padding: 0.2em 0.7em; border-radius: 20px; font-size: 0.85em; font-weight: 600; }
+  .badge-strong { background: rgba(52,211,153,0.15); color: var(--green); }
+  .slide-counter { position: fixed; bottom: 2vh; right: 3vw; font-size: 14px; color: var(--muted); z-index: 100; font-variant-numeric: tabular-nums; }
+  .progress { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.4s ease; z-index: 100; }
+  .tag { display: inline-block; background: var(--surface); border: 1px solid rgba(99,102,241,0.2); border-radius: 6px; padding: 0.2em 0.6em; font-size: 0.8em; margin-right: 0.4em; color: var(--accent2); }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
+  .subtitle { font-size: clamp(14px, 1.5vw, 22px); color: var(--muted); margin-top: 0.5rem; font-weight: 400; }
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+  .animate { animation: fadeInUp 0.8s ease forwards; }
+  .delay-1 { animation-delay: 0.2s; opacity: 0; }
+  .delay-2 { animation-delay: 0.4s; opacity: 0; }
+  .delay-3 { animation-delay: 0.6s; opacity: 0; }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+  <div class="progress" id="progress"></div>
+  <div class="slide-counter" id="counter"></div>
+
+  <!-- Slide 1: Title -->
+  <slide class="slide active" data-slide="0">
+    <h3>Causal Inference Analysis</h3>
+    <h1>Effect of State Minimum Wage Increases on Restaurant Employment</h1>
+    <p class="subtitle" style="margin-top:1.5rem;">
+      Staggered Difference-in-Differences &middot; Callaway & Sant'Anna (2021)
+    </p>
+    <div style="margin-top:2rem; display:flex; gap:1rem;">
+      <span class="tag">ATT</span>
+      <span class="tag">2010 -- 2020</span>
+      <span class="tag">3,047 counties</span>
+      <span class="tag">29 treated states</span>
+    </div>
+  </slide>
+
+  <!-- Slide 2: Motivation -->
+  <slide class="slide" data-slide="1">
+    <h2>Why This Question Matters</h2>
+    <ul style="margin-top:1.5rem; font-size: clamp(16px, 1.6vw, 22px);">
+      <li>Minimum wage increases are among the most debated labor policies &mdash; 29 states raised MW above federal level between 2010-2020</li>
+      <li>Restaurants employ ~10% of US workers, operate on thin margins (~5%), and have high labor cost shares (~30%)</li>
+      <li>Classic empirical question since Card & Krueger (1994), but prior work used simple 2-group DiD &mdash; staggered adoption requires modern methods</li>
+    </ul>
+  </slide>
+
+  <!-- Slide 3: Research Design -->
+  <slide class="slide" data-slide="2">
+    <h2>Research Design</h2>
+    <div class="two-col" style="margin-top:1.5rem;">
+      <div>
+        <h3>Setup</h3>
+        <ul>
+          <li><strong>Treatment:</strong> State MW increase above $7.25 federal minimum</li>
+          <li><strong>Outcome:</strong> Log county-level restaurant employment</li>
+          <li><strong>Data:</strong> QCEW, quarterly, 2010-2020</li>
+          <li><strong>Control:</strong> 21 never-treated states</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Identification</h3>
+        <ul>
+          <li><strong>Method:</strong> Staggered DiD (Callaway & Sant'Anna)</li>
+          <li><strong>Assumption:</strong> Parallel trends &mdash; absent MW increase, treated states would have followed the same employment trajectory as controls</li>
+          <li><strong>Why not TWFE:</strong> Biased with heterogeneous treatment effects under staggered adoption</li>
+        </ul>
+      </div>
+    </div>
+  </slide>
+
+  <!-- Slide 4: Data -->
+  <slide class="slide" data-slide="3">
+    <h2>Data at a Glance</h2>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="label">Counties</div>
+        <div class="value">3,047</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Observations</div>
+        <div class="value">133K</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Quarters</div>
+        <div class="value">44</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Treated States</div>
+        <div class="value">29</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Treatment Cohorts</div>
+        <div class="value">12</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Control States</div>
+        <div class="value">21</div>
+      </div>
+    </div>
+  </slide>
+
+  <!-- Slide 5: Main Result -->
+  <slide class="slide" data-slide="4">
+    <h2>Main Result</h2>
+    <div style="margin-top:1rem;">
+      <div class="big-number">-1.5%</div>
+      <div class="ci">ATT = -0.0147 &nbsp;|&nbsp; 95% CI: [-0.025, -0.004] &nbsp;|&nbsp; p = 0.007</div>
+    </div>
+    <p style="margin-top:2rem; font-size: clamp(15px, 1.5vw, 20px); max-width: 55ch;">
+      Restaurant employment fell by ~1.5% in states that raised their minimum wage. For the average treated state with 45,000 restaurant workers, this translates to roughly <strong style="color:var(--text)">675 fewer jobs</strong>.
+    </p>
+    <p style="margin-top:1rem; font-size: clamp(13px, 1.2vw, 17px);">
+      Event study shows: no pre-trends (F=0.87, p=0.54), effects emerge gradually, stabilize by quarter +4.
+    </p>
+  </slide>
+
+  <!-- Slide 6: Heterogeneity -->
+  <slide class="slide" data-slide="5">
+    <h2>Who Is Most Affected?</h2>
+    <table style="margin-top:1.5rem;">
+      <thead>
+        <tr><th>Subgroup</th><th>Estimate</th><th>SE</th><th style="text-align:right">N</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Full sample</td><td><strong>-0.0147</strong></td><td>0.0054</td><td style="text-align:right">133,268</td></tr>
+        <tr><td>Urban counties</td><td><strong>-0.0171</strong></td><td>0.0063</td><td style="text-align:right">52,408</td></tr>
+        <tr><td>Rural counties</td><td>-0.0098</td><td>0.0072</td><td style="text-align:right">80,860</td></tr>
+        <tr><td>Large MW increase (&gt;$2)</td><td><strong>-0.0195</strong></td><td>0.0068</td><td style="text-align:right">48,120</td></tr>
+        <tr><td>Small MW increase (&le;$1)</td><td>-0.0089</td><td>0.0065</td><td style="text-align:right">41,536</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:1.5rem;">Effects are larger in <strong style="color:var(--text)">urban areas</strong> and states with <strong style="color:var(--text)">larger MW increases</strong>. Rural effects are smaller and less precisely estimated.</p>
+  </slide>
+
+  <!-- Slide 7: Robustness Dashboard -->
+  <slide class="slide" data-slide="6">
+    <h2>Robustness Dashboard</h2>
+    <table style="margin-top:1rem;">
+      <thead>
+        <tr><th>Dimension</th><th>Status</th><th>Evidence</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Identification (pre-trends)</td><td class="pass">&#10003;</td><td>Joint F=0.87, p=0.54</td></tr>
+        <tr><td>Specification sensitivity</td><td class="pass">&#10003;</td><td>48 specs, all negative, 88% significant</td></tr>
+        <tr><td>Sample robustness</td><td class="pass">&#10003;</td><td>No single state drives result</td></tr>
+        <tr><td>Inference (wild bootstrap)</td><td class="pass">&#10003;</td><td>p=0.014 (bootstrap), p=0.008 (RI)</td></tr>
+        <tr><td>Sensitivity to unobservables</td><td class="pass">&#10003;</td><td>Oster's &delta; = 2.34, RV = 0.089</td></tr>
+        <tr><td>Placebo tests</td><td class="pass">&#10003;</td><td>6/6 passed (outcomes + timing)</td></tr>
+        <tr><td>Cross-method agreement</td><td class="pass">&#10003;</td><td>5 methods: [-0.016, -0.009], all significant</td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:1.5rem;">
+      <span class="badge badge-strong">STRONG EVIDENCE</span>
+      <span style="margin-left:0.8rem; color:var(--muted)">Robust across all 7 dimensions tested</span>
+    </div>
+  </slide>
+
+  <!-- Slide 8: Key Robustness Figure -->
+  <slide class="slide" data-slide="7">
+    <h2>Sensitivity to Unobservables</h2>
+    <div class="two-col" style="margin-top:1rem;">
+      <div>
+        <div class="stat-card" style="margin-bottom:1.5rem;">
+          <div class="label">Oster's Delta</div>
+          <div class="value" style="color:var(--green)">2.34</div>
+          <p style="font-size:0.85em; margin-top:0.3rem;">Unobservables would need 2.3x the selection of observables to explain away the result</p>
+        </div>
+        <div class="stat-card">
+          <div class="label">Robustness Value</div>
+          <div class="value" style="color:var(--green)">0.089</div>
+          <p style="font-size:0.85em; margin-top:0.3rem;">Exceeds all observed covariate benchmarks (max = 0.041)</p>
+        </div>
+      </div>
+      <div>
+        <div class="stat-card" style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+          <p style="text-align:center; font-size:clamp(14px, 1.3vw, 18px); line-height:1.8;">
+            Strongest observed confounder:<br>
+            <strong style="color:var(--text)">State GDP growth</strong><br>
+            partial R&sup2;(Y) = 0.041, partial R&sup2;(D) = 0.023<br><br>
+            A confouder would need<br>
+            <span style="font-size:1.4em; color:var(--accent2); font-weight:700;">2.3&times; stronger</span><br>
+            to nullify the result
+          </p>
+        </div>
+      </div>
+    </div>
+  </slide>
+
+  <!-- Slide 9: Limitations -->
+  <slide class="slide" data-slide="8">
+    <h2>Limitations</h2>
+    <ul style="margin-top:1.5rem; font-size: clamp(15px, 1.4vw, 20px);">
+      <li><strong style="color:var(--text)">External validity:</strong> Results cover 2010-2020 MW levels ($7.25-$15); may not extrapolate to $15+/hr policies</li>
+      <li><strong style="color:var(--text)">Spillovers:</strong> Labor migration between treated and control states could attenuate estimates</li>
+      <li><strong style="color:var(--text)">Hours vs. headcount:</strong> We measure employment counts, not hours worked &mdash; firms may cut hours instead of jobs</li>
+      <li><strong style="color:var(--text)">Welfare incomplete:</strong> Employment losses must be weighed against wage gains for retained workers</li>
+    </ul>
+  </slide>
+
+  <!-- Slide 10: Conclusion -->
+  <slide class="slide" data-slide="9">
+    <h2>Takeaway</h2>
+    <div style="margin-top:2rem; max-width: 60ch;">
+      <p style="font-size: clamp(18px, 2vw, 28px); color: var(--text); line-height:1.5; font-weight: 400;">
+        State minimum wage increases caused a <strong style="color:var(--accent2)">modest but robust 1.5% decline</strong> in restaurant employment, concentrated in urban areas and states with larger increases.
+      </p>
+      <p style="margin-top:2rem; font-size: clamp(14px, 1.4vw, 20px); line-height:1.6;">
+        The result survives all 7 robustness dimensions: specification sensitivity, sample stability, alternative inference, sensitivity to unobservables (&delta;=2.34), placebo tests (6/6 passed), and cross-method comparison (5 estimators agree).
+      </p>
+      <p style="margin-top:2rem; font-size: clamp(14px, 1.4vw, 20px); color: var(--muted);">
+        Policy implication: anticipate modest restaurant employment reductions when raising MW, but a full welfare assessment requires weighing these losses against the wage gains for retained workers.
+      </p>
+    </div>
+  </slide>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const progress = document.getElementById('progress');
+  const counter = document.getElementById('counter');
+  let current = 0;
+  const total = slides.length;
+
+  function updateSlide() {
+    slides.forEach((s, i) => s.classList.toggle('active', i === current));
+    progress.style.width = ((current + 1) / total * 100) + '%';
+    counter.textContent = (current + 1) + ' / ' + total;
+
+    // Trigger animations on active slide
+    const active = slides[current];
+    active.querySelectorAll('.animate, .delay-1, .delay-2, .delay-3').forEach(el => {
+      el.style.animation = 'none';
+      el.offsetHeight;
+      el.style.animation = '';
+    });
+  }
+
+  function next() { if (current < total - 1) { current++; updateSlide(); } }
+  function prev() { if (current > 0) { current--; updateSlide(); } }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft' || e.key === 'Backspace') { e.preventDefault(); prev(); }
+    if (e.key === 'Home') { current = 0; updateSlide(); }
+    if (e.key === 'End') { current = total - 1; updateSlide(); }
+  });
+
+  // Touch support
+  let touchStartX = 0;
+  document.addEventListener('touchstart', e => touchStartX = e.touches[0].clientX);
+  document.addEventListener('touchend', e => {
+    const diff = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(diff) > 50) { diff < 0 ? next() : prev(); }
+  });
+
+  // Click navigation (left third = back, right two-thirds = forward)
+  document.addEventListener('click', e => {
+    if (e.clientX < window.innerWidth / 3) prev(); else next();
+  });
+
+  updateSlide();
+</script>
+</body>
+</html>
