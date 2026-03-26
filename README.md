@@ -125,14 +125,15 @@ The [`examples/sample-output/`](examples/sample-output/) directory shows the com
 - Limitations and policy implications
 - Reproduction code (collapsible appendix)
 
-**Figures** ([`figures/`](examples/sample-output/figures/) directory):
+**Figures** ([`figures/`](examples/sample-output/figures/) directory) — cropped from the PDF report for pixel-perfect rendering:
+- `main_result.png` — Headline estimate with confidence interval
 - `event_study.png` — Dynamic treatment effects with pre/post coefficients and 95% CIs
 - `specification_curve.png` — 48 specifications sorted by estimate, preferred highlighted
+- `sensitivity_cards.png` — Oster's delta and Robustness Value summary cards
 - `sensitivity_contour.png` — Cinelli-Hazlett omitted variable bias contour with covariate benchmarks
-- `placebo_outcomes.png` — Real outcome vs. placebo outcomes bar chart
-- `placebo_timing.png` — Effect at shifted treatment dates
-- `leave_one_out.png` — Estimate stability when dropping each state
+- `placebo_outcomes.png` — Placebo outcomes and timing tests
 - `cross_method_forest.png` — Forest plot comparing 5 identification strategies
+- `robustness_dashboard.png` — Full 7-dimension robustness dashboard with verdict
 
 ## Skill File Structure
 

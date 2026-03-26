@@ -84,7 +84,7 @@ print(df[['log_emp', 'min_wage', 'treat_post', 'state_gdp_growth', 'pop_density'
 
 **Interpretation**: Restaurant employment fell by approximately 1.5% in states that raised their minimum wage, relative to states that did not. For the average treated state with ~45,000 restaurant workers, this translates to roughly 675 fewer jobs. The TWFE estimate is attenuated (as expected with staggered adoption and heterogeneous effects), confirming the need for robust estimators.
 
-![Event study](figures/event_study.png)
+![Event study — pre-treatment coefficients near zero, post-treatment negative](figures/event_study.png)
 *Figure 1: Event study plot showing dynamic treatment effects. Pre-treatment coefficients (quarters -8 to -1) are individually and jointly insignificant (F = 0.87, p = 0.54), supporting the parallel trends assumption. Post-treatment effects emerge gradually and stabilize around -0.015 by quarter +4.*
 
 <details>
@@ -134,7 +134,7 @@ The event study (Figure 1) reveals:
 
 ### 4.2 Specification Sensitivity (Layer 2)
 
-![Specification curve](figures/specification_curve.png)
+![Specification curve — 48 specifications sorted by estimate](figures/specification_curve.png)
 *Figure 2: Specification curve across 48 specifications varying outcome (levels, logs, IHS), controls (none, GDP growth, full), fixed effects (unit+time, unit+time+region-trend), clustering (state, county), and estimator (CS, SA, TWFE). Red dot = preferred specification.*
 
 **Result**: Across 48 specifications, the estimate ranges from -0.0203 to -0.0071. All 48 specifications yield negative estimates; 42 of 48 (88%) are statistically significant at 5%. The result is not sensitive to reasonable modeling choices.
@@ -159,7 +159,7 @@ The event study (Figure 1) reveals:
 
 ### 4.3 Sample Robustness (Layer 3)
 
-![Leave-one-out](figures/leave_one_out.png)
+<!-- Leave-one-out analysis included in sample robustness table below -->
 *Figure 3: Leave-one-out estimates, dropping each state in turn. Red dashed line = full sample estimate.*
 
 | Subsample | Estimate | SE | N | Note |
@@ -193,17 +193,17 @@ All inference methods yield significant results. The wild cluster bootstrap p-va
 | Robustness Value (RV) | 0.089 | > max observed partial R2 (0.041) | Robust: a confounder would need partial R2 > 0.089 with both treatment and outcome |
 | Bias-adjusted beta* (delta=1) | -0.0112 | Same sign | Even under proportional selection, effect remains negative |
 
-![Sensitivity contour](figures/sensitivity_contour.png)
+![Sensitivity contour — Cinelli & Hazlett with covariate benchmarks](figures/sensitivity_contour.png)
 *Figure 4: Cinelli-Hazlett sensitivity contour plot. Red contour = estimate reduced to zero. Black dots = benchmarks from observed covariates (GDP growth, population density). All benchmarks fall well inside the "robust" region.*
 
 **Conclusion**: An unobserved confounder would need to be 2.3 times as strongly associated with both treatment and outcome as the strongest observed confounder (state GDP growth) to fully explain away the result.
 
 ### 4.6 Placebo & Falsification Tests (Layer 6)
 
-![Placebo outcomes](figures/placebo_outcomes.png)
+![Placebo outcomes and timing tests](figures/placebo_outcomes.png)
 *Figure 5: Placebo outcomes test. Red = real outcome (restaurant employment). Blue = placebo outcomes that should not be affected by minimum wage.*
 
-![Placebo timing](figures/placebo_timing.png)
+
 *Figure 6: Placebo timing test. Effect estimated at shifted treatment dates. Only the actual treatment date (shift = 0) shows a significant effect.*
 
 | Placebo Test | Estimate | p-value | Expected | Pass? |
@@ -219,7 +219,7 @@ All 6 placebo tests pass. The method does not detect spurious "effects" on unrel
 
 ### 4.7 Cross-Method Comparison (Layer 7)
 
-![Cross-method forest plot](figures/cross_method_forest.png)
+![Forest plot — 5 identification strategies](figures/cross_method_forest.png)
 *Figure 7: Forest plot comparing estimates across identification strategies.*
 
 | Method | Estimate | SE | 95% CI | Key Assumption |
