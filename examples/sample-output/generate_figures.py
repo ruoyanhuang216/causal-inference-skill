@@ -154,65 +154,41 @@ def fig2_specification_curve():
     ci_lo = estimates - 1.96 * ses
     ci_hi = estimates + 1.96 * ses
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9, 5.5),
-                                     sharex=True, gridspec_kw={'hspace': 0.08, 'height_ratios': [3, 1.2]})
+    fig, ax = plt.subplots(figsize=(9, 4.5))
 
-    x = np.arange(n_specs)
+    # Zero reference line
+    ax.axhline(0, color=C_GRAY, linewidth=0.8, linestyle='-', alpha=0.4)
 
-    # ── Top panel: estimates ──
-    ax1.axhline(0, color=C_RED, linewidth=0.8, linestyle='--', alpha=0.6)
+    # Shade the range of estimates
+    ax.axhspan(estimates.min(), estimates.max(), color=C_BLUE, alpha=0.04, zorder=0)
 
     for i in range(n_specs):
         c = C_BLUE if significant[i] else C_GRAY
-        alpha = 1.0 if significant[i] else 0.5
-        ax1.vlines(i, ci_lo[i], ci_hi[i], color=c, linewidth=0.7, alpha=alpha * 0.5)
+        alpha = 1.0 if significant[i] else 0.45
+        ax.vlines(i, ci_lo[i], ci_hi[i], color=c, linewidth=0.8, alpha=alpha * 0.4)
 
         if i == preferred_idx:
-            ax1.plot(i, estimates[i], 'o', color=C_RED, markersize=7, zorder=5)
+            ax.plot(i, estimates[i], 'o', color=C_RED, markersize=8, zorder=5)
         else:
-            ax1.plot(i, estimates[i], 'o', color=c, markersize=4, alpha=alpha, zorder=4)
+            ax.plot(i, estimates[i], 'o', color=c, markersize=4, alpha=alpha, zorder=4)
 
-    ax1.annotate('Preferred\nspec.', xy=(preferred_idx, estimates[preferred_idx]),
-                 xytext=(preferred_idx + 6, estimates[preferred_idx] + 0.005),
-                 fontsize=8, color=C_RED, fontweight='bold',
-                 arrowprops=dict(arrowstyle='->', color=C_RED, lw=1.2))
+    # Annotation for preferred spec — place it in upper-left to avoid the zero line
+    ax.annotate('Preferred spec.\n(CS, log, DR, state cluster)',
+                xy=(preferred_idx, estimates[preferred_idx]),
+                xytext=(5, -0.004),
+                fontsize=8.5, color=C_RED, fontweight='bold',
+                arrowprops=dict(arrowstyle='->', color=C_RED, lw=1.2))
 
-    ax1.set_ylabel('Estimate (ATT)')
-    ax1.set_title('Specification Curve — 48 Specifications')
+    ax.set_ylabel('Estimate (ATT)')
+    ax.set_xlabel('Specification (sorted by estimate)')
+    ax.set_title('Specification Curve — 48 Specifications')
+    ax.set_xlim(-1, n_specs)
 
-    # Summary text
-    ax1.text(0.98, 0.95,
-             f'42/48 significant (88%)\nRange: [−0.020, −0.007]\nAll negative',
-             transform=ax1.transAxes, fontsize=8.5, va='top', ha='right',
-             bbox=dict(boxstyle='round,pad=0.4', facecolor='white', edgecolor='#E5E7EB', alpha=0.9))
-
-    # ── Bottom panel: specification indicators ──
-    # Create specification choice indicators
-    specs_labels = ['Estimator', 'Outcome', 'Controls', 'FE', 'Cluster']
-    # Generate plausible spec choices
-    np.random.seed(123)
-    spec_choices = np.random.randint(0, 3, size=(5, n_specs))
-    choice_colors = ['#1E40AF', '#047857', '#B45309']
-    choice_names = [
-        ['CS', 'SA', 'TWFE'],
-        ['log', 'levels', 'IHS'],
-        ['DR', 'none', 'full'],
-        ['unit+time', '+trend', '+region'],
-        ['state', 'county', 'state+co'],
-    ]
-
-    for row, (label, choices) in enumerate(zip(specs_labels, spec_choices)):
-        for col in range(n_specs):
-            c = choice_colors[choices[col]]
-            ax2.scatter(col, row, color=c, s=8, marker='s', alpha=0.7)
-
-    ax2.set_yticks(range(5))
-    ax2.set_yticklabels(specs_labels, fontsize=8)
-    ax2.set_xlabel('Specification (sorted by estimate)')
-    ax2.set_xlim(-1, n_specs)
-    ax2.invert_yaxis()
-    ax2.spines['left'].set_visible(False)
-    ax2.tick_params(axis='y', length=0)
+    # Summary box — top-right
+    ax.text(0.98, 0.97,
+            '42/48 significant (88%)\nRange: [\u22120.020, \u22120.007]\nAll 48 negative',
+            transform=ax.transAxes, fontsize=9, va='top', ha='right',
+            bbox=dict(boxstyle='round,pad=0.4', facecolor='white', edgecolor='#E5E7EB', alpha=0.9))
 
     fig.savefig(f'{OUTDIR}/fig2_specification_curve.pdf')
     fig.savefig(f'{OUTDIR}/fig2_specification_curve.png')
