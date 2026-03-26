@@ -14,7 +14,8 @@ When you invoke `/causal-inference`, the skill starts an interactive conversatio
 | **2. Data & Assignment** | Characterize your data structure, treatment assignment mechanism, timing, and confounders |
 | **3. Method Selection** | Navigate a decision tree across reduced-form and structural approaches to find the right method(s) |
 | **4. Assumption Diagnostics** | Walk through method-specific checklists to validate your identification strategy |
-| **5. Implementation** | Get Python code templates, robustness checks, and reporting guidance |
+| **5. Implementation** | Get Python code templates, key packages, and reporting guidance |
+| **6. Robustness Checks** | Interactive, layered robustness workflow: identification threats, specification sensitivity, sample robustness, inference checks, sensitivity to unobservables, placebo tests, cross-method comparison, and publication-ready output |
 
 ## Methods Covered
 

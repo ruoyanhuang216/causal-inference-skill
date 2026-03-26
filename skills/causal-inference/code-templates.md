@@ -993,6 +993,455 @@ print(f'RC (replacement cost): {result.x[1]:.2f}')
 
 ---
 
+## 13. Robustness Check Templates (Phase 6)
+
+### Specification Curve / Robustness Table
+```python
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import pyfixest as pf
+
+# ── Define specifications to loop over ──
+specs = []
+
+# Vary outcome transformation
+for outcome in ['outcome', 'log_outcome', 'rank_outcome']:
+    # Vary controls
+    for controls in ['', ' + x1', ' + x1 + x2 + x3']:
+        # Vary fixed effects
+        for fe in ['unit', 'unit + time', 'unit + time']:
+            # Vary clustering
+            for cluster_var in ['unit', 'state']:
+                formula = f'{outcome} ~ treat_post{controls} | {fe}'
+                try:
+                    model = pf.feols(formula, data=df, vcov={'CRV1': cluster_var})
+                    specs.append({
+                        'outcome': outcome,
+                        'controls': controls.strip(' +') or 'none',
+                        'fe': fe,
+                        'cluster': cluster_var,
+                        'estimate': model.coef().values[0],
+                        'se': model.se().values[0],
+                        'pvalue': model.pvalue().values[0],
+                        'n_obs': model.nobs,
+                    })
+                except Exception as e:
+                    pass
+
+spec_df = pd.DataFrame(specs)
+spec_df['ci_lower'] = spec_df['estimate'] - 1.96 * spec_df['se']
+spec_df['ci_upper'] = spec_df['estimate'] + 1.96 * spec_df['se']
+spec_df = spec_df.sort_values('estimate').reset_index(drop=True)
+
+# ── Specification curve plot ──
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), height_ratios=[3, 1],
+                                sharex=True, gridspec_kw={'hspace': 0.05})
+
+# Top panel: coefficient estimates with CIs
+ax1.scatter(range(len(spec_df)), spec_df['estimate'], s=15, color='steelblue', zorder=3)
+ax1.vlines(range(len(spec_df)), spec_df['ci_lower'], spec_df['ci_upper'],
+           color='steelblue', alpha=0.3, linewidth=1)
+ax1.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
+
+# Highlight preferred specification
+preferred_idx = spec_df.index[len(spec_df) // 2]  # or whichever is preferred
+ax1.scatter([preferred_idx], [spec_df.loc[preferred_idx, 'estimate']],
+            s=50, color='red', zorder=4, label='Preferred')
+ax1.set_ylabel('Treatment Effect Estimate')
+ax1.set_title('Specification Curve')
+ax1.legend()
+
+# Bottom panel: specification indicators
+# (simplified — mark which specs are significant)
+colors = ['green' if p < 0.05 else 'lightgray' for p in spec_df['pvalue']]
+ax2.bar(range(len(spec_df)), [1]*len(spec_df), color=colors, width=1.0)
+ax2.set_ylabel('p < 0.05')
+ax2.set_xlabel('Specification (sorted by estimate)')
+ax2.set_yticks([])
+
+plt.tight_layout()
+plt.show()
+
+# ── Print robustness table ──
+print(spec_df[['outcome', 'controls', 'fe', 'cluster', 'estimate', 'se', 'pvalue', 'n_obs']].to_string(index=False))
+```
+
+### Placebo Tests (Outcomes and Timing)
+```python
+import pyfixest as pf
+import matplotlib.pyplot as plt
+import numpy as np
+
+# ── Placebo outcomes ──
+# Test the treatment effect on outcomes that SHOULD NOT be affected
+placebo_outcomes = ['placebo_outcome1', 'placebo_outcome2', 'placebo_outcome3']
+real_outcome = 'outcome'
+all_outcomes = [real_outcome] + placebo_outcomes
+
+placebo_results = []
+for y in all_outcomes:
+    model = pf.feols(f'{y} ~ treat_post | unit + time', data=df, vcov={'CRV1': 'unit'})
+    placebo_results.append({
+        'outcome': y,
+        'estimate': model.coef().values[0],
+        'se': model.se().values[0],
+        'pvalue': model.pvalue().values[0],
+        'is_real': y == real_outcome
+    })
+
+placebo_df = pd.DataFrame(placebo_results)
+
+# Plot
+fig, ax = plt.subplots(figsize=(8, 5))
+colors = ['red' if r else 'steelblue' for r in placebo_df['is_real']]
+ax.barh(placebo_df['outcome'], placebo_df['estimate'], color=colors, alpha=0.7)
+ax.errorbar(placebo_df['estimate'], placebo_df['outcome'],
+            xerr=1.96 * placebo_df['se'], fmt='none', color='black', capsize=3)
+ax.axvline(x=0, color='black', linestyle='-', linewidth=0.5)
+ax.set_xlabel('Estimate')
+ax.set_title('Placebo Outcomes Test (red = real outcome)')
+plt.tight_layout()
+plt.show()
+
+# ── Placebo timing ──
+# Shift treatment date backward and re-estimate
+placebo_timing_results = []
+for shift in [-8, -6, -4, -2, 0]:  # 0 = actual treatment date
+    # Create shifted treatment indicator
+    df[f'treat_post_shift{shift}'] = (
+        (df['time'] >= df['first_treat'] + shift) & (df['first_treat'] > 0)
+    ).astype(int)
+    model = pf.feols(f'outcome ~ treat_post_shift{shift} | unit + time',
+                     data=df, vcov={'CRV1': 'unit'})
+    placebo_timing_results.append({
+        'shift': shift,
+        'estimate': model.coef().values[0],
+        'se': model.se().values[0],
+        'is_real': shift == 0
+    })
+
+timing_df = pd.DataFrame(placebo_timing_results)
+fig, ax = plt.subplots(figsize=(8, 5))
+colors = ['red' if r else 'gray' for r in timing_df['is_real']]
+ax.bar(timing_df['shift'], timing_df['estimate'], color=colors, alpha=0.7)
+ax.errorbar(timing_df['shift'], timing_df['estimate'],
+            yerr=1.96 * timing_df['se'], fmt='none', color='black', capsize=5)
+ax.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
+ax.set_xlabel('Treatment Timing Shift (periods)')
+ax.set_ylabel('Estimate')
+ax.set_title('Placebo Timing Test (red = actual treatment)')
+plt.tight_layout()
+plt.show()
+```
+
+### Sensitivity Analysis: Oster + Cinelli-Hazlett Combined
+```python
+import statsmodels.formula.api as smf
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ═══════════════════════════════════════════
+# Oster's Delta
+# ═══════════════════════════════════════════
+short = smf.ols('outcome ~ treat', data=df).fit()
+long = smf.ols('outcome ~ treat + x1 + x2 + x3', data=df).fit()
+
+beta_s, beta_l = short.params['treat'], long.params['treat']
+r2_s, r2_l = short.rsquared, long.rsquared
+r2_max = min(1.0, 1.3 * r2_l)
+
+delta = (beta_l * (r2_max - r2_l)) / ((beta_s - beta_l) * (r2_l - r2_s))
+beta_star = beta_l - (beta_s - beta_l) * (r2_max - r2_l) / (r2_l - r2_s)
+
+print('=== Oster (2019) Sensitivity ===')
+print(f'  Short regression beta: {beta_s:.4f} (R2 = {r2_s:.4f})')
+print(f'  Long regression beta:  {beta_l:.4f} (R2 = {r2_l:.4f})')
+print(f'  R2_max (1.3 * R2_long): {r2_max:.4f}')
+print(f'  Delta: {delta:.2f}')
+print(f'  Interpretation: {"ROBUST (delta > 1)" if abs(delta) > 1 else "SENSITIVE (delta < 1)"}')
+print(f'  Bias-adjusted beta* (delta=1): {beta_star:.4f}')
+
+# ═══════════════════════════════════════════
+# Cinelli & Hazlett (2020) — Robustness Value
+# ═══════════════════════════════════════════
+model = smf.ols('outcome ~ treat + x1 + x2 + x3', data=df).fit()
+t_stat = model.tvalues['treat']
+dof = model.df_resid
+
+rv = np.sqrt(t_stat**2 / (t_stat**2 + dof))
+
+print(f'\n=== Cinelli & Hazlett (2020) Sensitivity ===')
+print(f'  t-statistic: {t_stat:.3f}')
+print(f'  Robustness Value (RV): {rv:.3f}')
+print(f'  Interpretation: A confounder would need partial R2 > {rv:.3f}')
+print(f'  with BOTH treatment and outcome to nullify the result.')
+
+# Benchmark against observed covariates
+print(f'\n  Benchmarks (partial R2 of observed covariates):')
+covariates = ['x1', 'x2', 'x3']
+for cov in covariates:
+    others = [c for c in covariates if c != cov]
+    restricted = smf.ols(f'outcome ~ treat + {" + ".join(others)}', data=df).fit()
+    partial_r2_y = 1 - model.ssr / restricted.ssr
+
+    treat_full = smf.ols(f'treat ~ {" + ".join(covariates)}', data=df).fit()
+    treat_rest = smf.ols(f'treat ~ {" + ".join(others)}', data=df).fit()
+    partial_r2_d = 1 - treat_full.ssr / treat_rest.ssr
+
+    stronger = 'STRONGER than RV' if min(partial_r2_y, partial_r2_d) > rv else 'weaker than RV'
+    print(f'    {cov}: R2(Y)={partial_r2_y:.4f}, R2(D)={partial_r2_d:.4f} ({stronger})')
+
+# ═══════════════════════════════════════════
+# Sensitivity contour plot (simplified)
+# ═══════════════════════════════════════════
+r2d_grid = np.linspace(0, 0.3, 100)
+r2y_grid = np.linspace(0, 0.3, 100)
+R2D, R2Y = np.meshgrid(r2d_grid, r2y_grid)
+
+# Adjusted estimate as function of confounder strength
+# Simplified bias formula: bias ≈ sqrt(R2D * R2Y) * se * sqrt(dof) / (1 - R2D)
+bias = np.sqrt(R2D * R2Y) * np.sqrt(model.ssr / dof) / np.sqrt(
+    model.ssr / dof * (1 - R2D)) * np.abs(t_stat) / t_stat
+adjusted = beta_l - np.sign(beta_l) * np.abs(bias) * model.bse['treat'] * t_stat
+
+fig, ax = plt.subplots(figsize=(8, 6))
+contours = ax.contour(R2D, R2Y, adjusted, levels=[0], colors='red', linewidths=2)
+ax.contourf(R2D, R2Y, adjusted, levels=np.linspace(adjusted.min(), adjusted.max(), 20),
+            cmap='RdYlGn', alpha=0.5)
+ax.set_xlabel('Partial R² with Treatment')
+ax.set_ylabel('Partial R² with Outcome')
+ax.set_title(f'Sensitivity Contour (red line: estimate = 0)')
+
+# Plot benchmarks
+for cov in covariates:
+    others = [c for c in covariates if c != cov]
+    restricted = smf.ols(f'outcome ~ treat + {" + ".join(others)}', data=df).fit()
+    pr2_y = 1 - model.ssr / restricted.ssr
+    treat_full = smf.ols(f'treat ~ {" + ".join(covariates)}', data=df).fit()
+    treat_rest = smf.ols(f'treat ~ {" + ".join(others)}', data=df).fit()
+    pr2_d = 1 - treat_full.ssr / treat_rest.ssr
+    ax.plot(pr2_d, pr2_y, 'ko', markersize=8)
+    ax.annotate(cov, (pr2_d, pr2_y), textcoords='offset points', xytext=(5, 5))
+
+plt.colorbar(ax.contourf(R2D, R2Y, adjusted, levels=20, cmap='RdYlGn', alpha=0.5),
+             label='Adjusted Estimate')
+plt.tight_layout()
+plt.show()
+```
+
+### Wild Cluster Bootstrap
+```python
+# pip install wildboottest
+from wildboottest.wildboottest import wildboottest
+import pyfixest as pf
+
+# Main estimate
+model = pf.feols('outcome ~ treat_post | unit + time', data=df, vcov={'CRV1': 'state'})
+print('Cluster-robust estimate:')
+print(model.summary())
+
+# Wild cluster bootstrap (for few clusters)
+boot_result = wildboottest(
+    model=model,
+    param='treat_post',
+    cluster=df['state'],
+    B=9999,
+    seed=42
+)
+print(f'\nWild Cluster Bootstrap:')
+print(f'  t-stat: {boot_result["t_stat"]:.3f}')
+print(f'  Bootstrap p-value: {boot_result["pvalue"]:.4f}')
+print(f'  CI: [{boot_result["ci"][0]:.4f}, {boot_result["ci"][1]:.4f}]')
+
+# Compare inference methods
+print(f'\nComparison:')
+print(f'  Cluster-robust p-value: {model.pvalue().values[0]:.4f}')
+print(f'  Wild bootstrap p-value: {boot_result["pvalue"]:.4f}')
+if boot_result['pvalue'] < 0.05 and model.pvalue().values[0] < 0.05:
+    print('  Both significant at 5% — inference is robust.')
+elif boot_result['pvalue'] >= 0.05 and model.pvalue().values[0] < 0.05:
+    print('  WARNING: Significant under cluster-robust but NOT under wild bootstrap.')
+    print('  Significance may be an artifact of few clusters.')
+```
+
+### Randomization Inference
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+def compute_test_stat(outcome, treatment):
+    """Simple difference in means as test statistic."""
+    return outcome[treatment == 1].mean() - outcome[treatment == 0].mean()
+
+# Observed test statistic
+observed_stat = compute_test_stat(df['outcome'].values, df['treat'].values)
+
+# Permutation distribution
+n_perms = 10000
+perm_stats = np.zeros(n_perms)
+treatment = df['treat'].values.copy()
+outcome = df['outcome'].values
+
+for i in range(n_perms):
+    np.random.shuffle(treatment)
+    perm_stats[i] = compute_test_stat(outcome, treatment)
+
+# Two-sided p-value
+p_value = np.mean(np.abs(perm_stats) >= np.abs(observed_stat))
+
+# Plot
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.hist(perm_stats, bins=100, density=True, alpha=0.7, color='steelblue',
+        label='Permutation distribution')
+ax.axvline(x=observed_stat, color='red', linewidth=2, linestyle='--',
+           label=f'Observed = {observed_stat:.3f}')
+ax.axvline(x=-observed_stat, color='red', linewidth=2, linestyle='--', alpha=0.5)
+ax.set_xlabel('Test Statistic')
+ax.set_ylabel('Density')
+ax.set_title(f'Randomization Inference (p = {p_value:.4f})')
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+print(f'Observed statistic: {observed_stat:.4f}')
+print(f'Randomization inference p-value (two-sided): {p_value:.4f}')
+```
+
+### Subsample Robustness
+```python
+import pyfixest as pf
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# ── Leave-one-out by group ──
+groups = df['state'].unique()
+loo_results = []
+
+for g in groups:
+    df_loo = df[df['state'] != g]
+    model = pf.feols('outcome ~ treat_post | unit + time',
+                     data=df_loo, vcov={'CRV1': 'state'})
+    loo_results.append({
+        'dropped': g,
+        'estimate': model.coef().values[0],
+        'se': model.se().values[0],
+        'n_obs': model.nobs
+    })
+
+loo_df = pd.DataFrame(loo_results).sort_values('estimate')
+
+# Plot
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.scatter(range(len(loo_df)), loo_df['estimate'], s=20, color='steelblue')
+ax.fill_between(range(len(loo_df)),
+                loo_df['estimate'] - 1.96 * loo_df['se'],
+                loo_df['estimate'] + 1.96 * loo_df['se'],
+                alpha=0.2, color='steelblue')
+ax.axhline(y=0, color='black', linewidth=0.5)
+
+# Full sample estimate for reference
+full_model = pf.feols('outcome ~ treat_post | unit + time', data=df, vcov={'CRV1': 'state'})
+ax.axhline(y=full_model.coef().values[0], color='red', linestyle='--',
+           label=f'Full sample: {full_model.coef().values[0]:.4f}')
+
+ax.set_xlabel('Specification (one state dropped)')
+ax.set_ylabel('Estimate')
+ax.set_title('Leave-One-Out Robustness')
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+# Flag influential states
+full_est = full_model.coef().values[0]
+loo_df['deviation'] = abs(loo_df['estimate'] - full_est)
+influential = loo_df.nlargest(3, 'deviation')
+print('Most influential states (largest change when dropped):')
+for _, row in influential.iterrows():
+    print(f"  Drop {row['dropped']}: estimate = {row['estimate']:.4f} "
+          f"(deviation = {row['deviation']:.4f})")
+```
+
+### Multiple Testing Correction
+```python
+import numpy as np
+from statsmodels.stats.multitest import multipletests
+
+# Suppose you have p-values from testing multiple outcomes
+outcomes = ['outcome1', 'outcome2', 'outcome3', 'outcome4', 'outcome5']
+p_values = np.array([0.003, 0.021, 0.048, 0.087, 0.230])
+
+# Bonferroni correction
+bonf_reject, bonf_pvals, _, _ = multipletests(p_values, method='bonferroni')
+
+# Benjamini-Hochberg (FDR control)
+bh_reject, bh_pvals, _, _ = multipletests(p_values, method='fdr_bh')
+
+# Holm (step-down Bonferroni — less conservative)
+holm_reject, holm_pvals, _, _ = multipletests(p_values, method='holm')
+
+# Summary table
+import pandas as pd
+correction_df = pd.DataFrame({
+    'outcome': outcomes,
+    'raw_p': p_values,
+    'bonferroni_p': bonf_pvals,
+    'bonferroni_sig': bonf_reject,
+    'holm_p': holm_pvals,
+    'holm_sig': holm_reject,
+    'bh_p': bh_pvals,
+    'bh_sig': bh_reject,
+})
+print('Multiple Testing Corrections:')
+print(correction_df.to_string(index=False))
+print(f'\nRaw significant (p < 0.05): {sum(p_values < 0.05)} / {len(p_values)}')
+print(f'Bonferroni significant: {sum(bonf_reject)} / {len(p_values)}')
+print(f'Holm significant: {sum(holm_reject)} / {len(p_values)}')
+print(f'Benjamini-Hochberg significant: {sum(bh_reject)} / {len(p_values)}')
+```
+
+### Cross-Method Comparison Table
+```python
+import pandas as pd
+
+# After running multiple methods, compile results
+comparison = pd.DataFrame([
+    {'method': 'DiD (TWFE)', 'estimate': 0.045, 'se': 0.012,
+     'assumption': 'Parallel trends', 'note': 'May be biased with heterogeneous effects'},
+    {'method': 'DiD (Callaway-Sant\'Anna)', 'estimate': 0.052, 'se': 0.015,
+     'assumption': 'Parallel trends (group-time)', 'note': 'Robust to heterogeneous effects'},
+    {'method': 'Synthetic Control', 'estimate': 0.048, 'se': 0.018,
+     'assumption': 'Factor model', 'note': 'Permutation p-value'},
+    {'method': 'OLS + controls', 'estimate': 0.038, 'se': 0.010,
+     'assumption': 'Selection on observables', 'note': 'Biased benchmark'},
+    {'method': 'Matching (PSM)', 'estimate': 0.041, 'se': 0.014,
+     'assumption': 'Conditional independence', 'note': 'ATT'},
+])
+
+comparison['ci_lower'] = comparison['estimate'] - 1.96 * comparison['se']
+comparison['ci_upper'] = comparison['estimate'] + 1.96 * comparison['se']
+comparison['significant'] = comparison['ci_lower'] > 0
+
+print('Cross-Method Comparison:')
+print(comparison[['method', 'estimate', 'se', 'ci_lower', 'ci_upper', 'assumption']].to_string(index=False))
+
+# Forest plot
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(figsize=(10, 5))
+y_pos = range(len(comparison))
+ax.errorbar(comparison['estimate'], y_pos, xerr=1.96 * comparison['se'],
+            fmt='o', color='steelblue', capsize=5, markersize=8)
+ax.axvline(x=0, color='black', linewidth=0.5)
+ax.set_yticks(y_pos)
+ax.set_yticklabels(comparison['method'])
+ax.set_xlabel('Treatment Effect Estimate')
+ax.set_title('Cross-Method Comparison (Forest Plot)')
+plt.tight_layout()
+plt.show()
+```
+
+---
+
 ## Key Python Packages Summary
 
 | Method | Primary Package | Alternative |
@@ -1015,3 +1464,7 @@ print(f'RC (replacement cost): {result.x[1]:.2f}')
 | Discrete Choice | `xlogit`, `biogeme` | scipy (manual MLE) |
 | Dynamic Structural | scipy, `numba` | `JAX` |
 | Structural (general) | `scipy.optimize`, `JAX` | `Pyomo`, `casadi` (MPEC) |
+| Specification Curve | `pyfixest`, `matplotlib` | — |
+| Wild Bootstrap | `wildboottest` | — |
+| Multiple Testing | `statsmodels.stats.multitest` | — |
+| Randomization Inference | `numpy` (manual) | `randomizr` |

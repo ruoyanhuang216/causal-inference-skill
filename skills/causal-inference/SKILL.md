@@ -405,6 +405,222 @@ Once the method and diagnostics are confirmed, provide:
 
 ---
 
+### PHASE 6: Interactive Robustness Check Workflow
+
+After the user has their main estimates from Phase 5, guide them through a structured robustness session. This phase is **interactive**: run one layer at a time, generate code, ask what they found, help interpret, then move to the next layer.
+
+**Entry point**: Ask the user:
+> "You have your main estimates. Let's stress-test them. I'll walk you through robustness checks in order of priority — starting with the ones that could overturn your result, then moving to specification sensitivity and presentation."
+>
+> "What is your main estimate and its standard error / confidence interval? And have you already run any robustness checks?"
+
+Then proceed through the layers below. **Prioritize based on the method chosen in Phase 3** — not every layer applies to every method.
+
+---
+
+#### Layer 1: Core Identification Threats
+
+These are tests that, if failed, **undermine the entire identification strategy**. Run these first.
+
+Ask: "Let's start with the tests that matter most for your identification. If any of these fail, we need to reconsider the approach."
+
+| Method | Critical Test | What Failure Means |
+|--------|--------------|-------------------|
+| **DiD** | Parallel pre-trends (event study coefficients) | Treated and control were already diverging → effect may be spurious |
+| **DiD (staggered)** | Goodman-Bacon decomposition; negative weights | TWFE estimate is contaminated by bad comparisons → use robust estimator |
+| **RDD** | McCrary/rddensity manipulation test | Units are sorting around the cutoff → local randomization assumption fails |
+| **RDD** | Covariate smoothness at cutoff | Pre-determined variables jump at cutoff → selection, not randomization |
+| **IV** | First-stage F-statistic (effective F) | Instrument is weak → biased toward OLS, unreliable inference |
+| **IV** | Reduced form significance | If instrument → outcome is insignificant, IV estimate is noise |
+| **SCM** | Pre-treatment fit (RMSPE) | Synthetic control doesn't track treated unit → counterfactual is unreliable |
+| **Matching/IPW** | Covariate balance after matching/weighting | Imbalance remains → treatment effect estimate is confounded |
+| **Matching/IPW** | Common support / overlap | Extreme propensity scores → extrapolation, not interpolation |
+| **RCT** | Balance table across arms | Large imbalances suggest randomization failure or differential attrition |
+| **Structural** | Sign/magnitude of price coefficient | Wrong sign or implausible magnitude → demand model is misspecified |
+| **Structural** | Marginal cost recovery | Negative marginal costs → supply-side model is wrong |
+
+**For each test**:
+1. Generate the Python code
+2. After the user runs it, ask: "What did you find?"
+3. If the test **passes**: "Good — your identification holds on this dimension. Let's move to the next check."
+4. If the test **fails**: Explain severity. Suggest remedies:
+   - Can you use an alternative estimator? (e.g., robust DiD instead of TWFE)
+   - Can you redefine the sample? (e.g., donut hole for RDD manipulation)
+   - Should you reframe the result as suggestive rather than causal?
+   - Should you switch methods entirely?
+
+---
+
+#### Layer 2: Specification Sensitivity
+
+These tests check whether the result is robust to **reasonable alternative modeling choices**. A result that only holds under one specific specification is fragile.
+
+Ask: "Your identification looks solid. Now let's check whether the result is sensitive to how you specify the model."
+
+Generate a **specification curve** or **robustness table** by systematically varying:
+
+| Dimension | Variations to Try |
+|-----------|------------------|
+| **Outcome variable** | Levels vs. logs vs. inverse hyperbolic sine vs. ranks vs. winsorized |
+| **Control variables** | Baseline (no controls) → preferred set → kitchen sink. Result should be stable. |
+| **Fixed effects** | Unit FE only → time FE only → unit + time → unit × time trends |
+| **Sample period** | Full sample → drop early/late years → rolling windows |
+| **Treatment definition** | Binary vs. continuous dosage; intent-to-treat vs. treatment-on-treated |
+| **Estimator** | For DiD: TWFE vs. Callaway-Sant'Anna vs. Sun-Abraham vs. imputation. For RDD: linear vs. quadratic; triangular vs. uniform kernel |
+| **Bandwidth / caliper** | For RDD: 0.5×, 0.75×, 1×, 1.25×, 1.5×, 2× optimal. For matching: vary caliper. |
+| **Clustering level** | State vs. county vs. individual; one-way vs. two-way clustering |
+| **Functional form** | For structural: logit vs. nested logit vs. mixed logit; alternative utility specifications |
+
+**How to present**: Generate a **coefficient plot** showing the main estimate across all specifications. The user should see:
+- The point estimate and CI from the preferred specification (highlighted)
+- The range across all alternative specifications
+- A visual check: do all estimates agree on sign and approximate magnitude?
+
+Provide code to generate a specification table (rows = specifications, columns = estimate, SE, N, key specification choices).
+
+---
+
+#### Layer 3: Sample Robustness
+
+Check whether the result is **driven by specific subgroups, outliers, or time periods**.
+
+Ask: "Let's check if your result holds across different slices of the data, or if it's driven by specific observations."
+
+| Test | What to Do | Red Flag |
+|------|-----------|----------|
+| **Drop outliers** | Winsorize at 1%/99%, 5%/95%; trim extreme outcome values | Estimate changes sign or loses significance |
+| **Subsample by time** | Estimate separately for early vs. late periods; rolling windows | Effect only exists in one sub-period |
+| **Subsample by geography** | Region-by-region or state-by-state estimates | Driven by one region |
+| **Subsample by demographics** | Male/female, age groups, income groups | Effect is only in one group (may be informative heterogeneity, not a problem) |
+| **Leave-one-out** | For SCM: drop each major donor. For IV: drop most influential observations. For DiD: drop each treatment cohort. | Estimate swings wildly when one unit is dropped |
+| **Donut hole** (RDD) | Exclude observations within ±ε of cutoff | If result strengthens, manipulation near cutoff was attenuating |
+| **Trimming** (Matching/IPW) | Drop observations with propensity scores < 0.05 or > 0.95 | Estimate changes a lot → driven by extrapolation in thin-support region |
+| **Jackknife / influence** | For structural: identify markets/products with highest influence on parameter estimates | Single market drives the result |
+
+---
+
+#### Layer 4: Inference Robustness
+
+Check whether **statistical significance** is robust to alternative inference approaches.
+
+Ask: "Your point estimate looks stable. Now let's make sure your p-values and confidence intervals are reliable."
+
+| Test | When to Use | Python Approach |
+|------|------------|----------------|
+| **Cluster-robust SEs** | Always when treatment is at a higher level than observation | Compare: heteroskedasticity-robust vs. clustered at unit vs. clustered at group |
+| **Wild cluster bootstrap** | Few clusters (< 50); cluster-robust SEs may be unreliable | `wildboottest` package; Cameron, Gelbach & Miller (2008) |
+| **Randomization inference** | Small samples; want exact p-values; RDD, RCT | Permute treatment assignment, compute test statistic distribution |
+| **Conley spatial SEs** | Spatial correlation in errors | Distance-based kernel for SE estimation |
+| **Multiple testing correction** | Testing multiple outcomes or subgroups | Bonferroni, Benjamini-Hochberg, Romano-Wolf step-down |
+| **Anderson q-values** | Multiple hypothesis testing with FDR control | Anderson (2008) sharpened q-values |
+| **Effective F / weak-IV robust** | IV with potentially weak instruments | Anderson-Rubin confidence set; tF procedure |
+
+**Key principle**: If the result is significant under cluster-robust SEs but not under wild bootstrap, the significance may be an artifact of too few clusters.
+
+---
+
+#### Layer 5: Sensitivity to Unobservables
+
+This layer asks: **"How much hidden confounding would it take to explain away the result?"** Always include at least one of these.
+
+Ask: "Even if your identification is strong, a reviewer will ask about unobservables. Let's quantify how robust your result is to hidden bias."
+
+| Method | Best Sensitivity Tool | Output | "Safe" Threshold |
+|--------|---------------------|--------|-----------------|
+| **OLS / Matching / IPW** | **Oster's delta** | How much selection on unobservables (relative to observables) to explain away the effect | δ > 1 is reassuring |
+| **OLS / Matching / IPW** | **Cinelli & Hazlett (2020)** | Robustness value (RV): minimum partial R² of confounder with both treatment and outcome to nullify result | RV > partial R² of strongest observed confounder |
+| **Matching** | **Rosenbaum bounds** | Gamma: how much hidden bias (odds ratio) before significance is lost | Γ > 2 is strong |
+| **Any method** | **E-value** | Minimum risk ratio of unmeasured confounder-outcome and confounder-treatment associations | Compare to plausible confounders |
+| **DiD** | **Rambachan & Roth (2023)** | Honest CIs allowing for non-linear violations of parallel trends | Estimate remains significant under M-bar > 0 |
+| **RCT with attrition** | **Lee bounds** | Worst-case bounds on treatment effect under differential attrition | Bounds exclude zero |
+| **Any method** | **Manski bounds** | Extreme worst-case bounds (no parametric assumptions) | Bounds are informative (not ±∞) |
+
+**For each**:
+1. Generate the code
+2. Report the key number (δ, RV, Γ, or E-value)
+3. Interpret: "Your result would require an unobserved confounder X times stronger than [strongest observed confounder] to be explained away."
+
+---
+
+#### Layer 6: Placebo and Falsification Tests
+
+These are the **most intuitive** robustness checks for reviewers. If your method "finds" an effect where none should exist, something is wrong.
+
+Ask: "Let's run some placebo tests — applying your method in settings where we know the true effect should be zero."
+
+| Test | Description | Implementation |
+|------|------------|----------------|
+| **Placebo outcomes** | Apply the same method to outcomes that should NOT be affected by treatment | E.g., for minimum wage → employment: test effect on outcomes like "number of sunny days" or "employment in non-MW-sensitive sectors" |
+| **Placebo timing** | Pretend the treatment happened at an earlier date | Shift treatment date back by T periods; effect should be ≈ 0 |
+| **Placebo treatment group** | Apply treatment to a group that was not actually treated | E.g., apply the DiD to a "control" group only; no effect expected |
+| **Placebo cutoff** (RDD) | Test for discontinuities at values away from the real cutoff | Estimate RD at cutoff ± K; should find nothing |
+| **Permutation / placebo SCM** | Apply SCM to each donor unit | The treated unit's effect should be an outlier; p-value from rank |
+| **Pre-treatment effect** | Estimate the "effect" in the pre-treatment period only | Should be zero; non-zero suggests pre-existing trends or confounds |
+
+**Interpretation guidance**:
+- If placebo tests **pass** (null results where expected): strong evidence for your identification
+- If placebo tests **fail** (significant "effects" where none expected): the method is picking up something other than the treatment → investigate, respecify, or acknowledge as limitation
+- Present the full distribution of placebo estimates alongside the actual estimate (e.g., permutation plot for SCM)
+
+---
+
+#### Layer 7: Cross-Method Comparison
+
+When feasible, estimate the effect using **an entirely different identification strategy** as a triangulation check.
+
+Ask: "If your data allows, we can also try estimating the same effect with a different method. Agreement across methods is powerful evidence."
+
+| Primary Method | Alternative to Try | When Feasible |
+|---------------|-------------------|---------------|
+| DiD | Synthetic Control or SCM + DiD (SDID) | Have donor pool and pre-treatment periods |
+| DiD | Matching + DiD (match on pre-treatment trends, then difference) | Cross-sectional variation in treatment |
+| RDD | DiD around the cutoff (if panel data) | Have pre/post data for units near cutoff |
+| IV | OLS with controls (as biased benchmark) + Oster sensitivity | Always feasible as comparison |
+| Matching/IPW | Doubly robust (AIPW); DML | Same data, more robust estimator |
+| SCM | DiD; SDID; CausalImpact | Have panel structure |
+| Structural | Reduced-form IV or DiD for key elasticity | Have quasi-experimental variation for one parameter |
+
+**Present as a comparison table**:
+| Method | Estimate | SE | 95% CI | Key Assumption |
+|--------|---------|-----|--------|---------------|
+| Primary (DiD) | ... | ... | ... | Parallel trends |
+| Alternative (SCM) | ... | ... | ... | Factor model |
+| Benchmark (OLS) | ... | ... | ... | Selection on observables |
+
+Agreement across methods with **different identifying assumptions** is the strongest form of robustness.
+
+---
+
+#### Robustness Summary: Publication-Ready Output
+
+After completing the layers, generate a **summary package** for the user's paper:
+
+1. **Robustness table**: A single table with rows for each specification/check and columns for estimate, SE, N, and a note on what varies. Provide code to generate this as a formatted DataFrame or LaTeX table.
+
+2. **Key figures**:
+   - Specification curve / coefficient plot (Layer 2)
+   - Event study plot with pre-treatment coefficients (Layer 1, if DiD)
+   - Sensitivity contour plot or Oster delta (Layer 5)
+   - Placebo distribution plot (Layer 6)
+   - Bandwidth sensitivity plot (Layer 2, if RDD)
+
+3. **Limitations paragraph**: Based on which checks passed and which flagged concerns, draft a "Limitations" paragraph for the paper. Be honest:
+   - "Our results are robust to [list of passed checks]."
+   - "We note that [failed check] suggests [limitation]. We address this by [remedy or caveat]."
+   - "Sensitivity analysis indicates that an unobserved confounder would need to explain [X]% of residual variation to nullify our result (Oster's δ = [value])."
+
+4. **Reviewer anticipation**: Based on the method and setting, flag the **top 3 objections a referee is likely to raise** and suggest how the robustness checks address them.
+
+**How to interact in this phase**:
+- Walk through one layer at a time
+- Generate code for each test
+- After each layer, ask: "What did you find? Should we investigate further or move on?"
+- If a test raises concerns, stop and help diagnose before continuing
+- At the end, offer to compile the full robustness package (table + figures + limitations text)
+- Refer to [code-templates.md](code-templates.md) Section 13 for robustness check code templates
+
+---
+
 ## Special Topics
 
 If the user's problem involves any of these, raise them proactively:
