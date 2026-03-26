@@ -88,8 +88,11 @@ The skill immediately picks up the key elements and starts Phase 1.
 The skill asks targeted questions to nail down the research setup:
 
 > **Research question**: Does raising the state minimum wage reduce restaurant employment?
+>
 > **Treatment**: State-level minimum wage increase (binary)
+>
 > **Outcome**: Restaurant sector employment — level? log? employment-to-population ratio?
+>
 > **Estimand**: ATT or ATE?
 >
 > A few follow-ups:
@@ -107,7 +110,9 @@ I answer: log employment, ATT, first increase as treatment event, want both aver
 The skill characterizes my data:
 
 > **Data structure**: Panel (county-quarter) ✓
+>
 > **Assignment mechanism**: Self-selected — states chose to raise MW. This is **not randomly assigned**. The key question is whether the *timing* is as good as random.
+>
 > **Treatment timing**: Staggered — different states adopted at different times. **This is critical for method selection.**
 >
 > Are there states that **never** raised MW? These "never-treated" units are valuable.
