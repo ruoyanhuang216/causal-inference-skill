@@ -277,6 +277,8 @@ After the analysis is complete, the skill compiles everything into two deliverab
 
 Title → Motivation → Research Design → Data → Main Result → Heterogeneity → Robustness Dashboard → Sensitivity → Limitations → Conclusion
 
+[**→ View the live presentation here**](https://htmlpreview.github.io/?https://github.com/ruoyanhuang216/causal-inference-skill/blob/main/examples/sample-output/presentation.html)
+
 You can see the full sample outputs in the [GitHub repo](https://github.com/ruoyanhuang216/causal-inference-skill/tree/main/examples/sample-output).
 
 ---
