@@ -621,6 +621,429 @@ After completing the layers, generate a **summary package** for the user's paper
 
 ---
 
+### PHASE 7: Report Generation
+
+After the analysis is complete (or at any point the user requests it), generate a structured markdown report that documents the entire causal analysis workflow. The report should be a **self-contained, reproducible, publication-quality document**.
+
+**Entry point**: Ask the user:
+> "Let me compile your analysis into a report. A few questions:
+> 1. What should the report be called? (Default: `causal_analysis_report/`)
+> 2. What is the one-sentence summary of your research question?
+> 3. Do you want code blocks visible or collapsed in `<details>` tags?"
+
+#### Report File Structure
+
+Generate the following directory structure:
+
+```
+causal_analysis_report/
+├── report.md              # Main analysis report
+├── figures/               # All plots saved as PNG
+│   ├── event_study.png
+│   ├── main_results.png
+│   ├── specification_curve.png
+│   ├── sensitivity_contour.png
+│   ├── placebo_outcomes.png
+│   ├── placebo_timing.png
+│   ├── leave_one_out.png
+│   ├── cross_method_forest.png
+│   └── ...
+└── code/                  # Standalone reproduction scripts (optional)
+    ├── 01_data_prep.py
+    ├── 02_main_estimation.py
+    └── 03_robustness.py
+```
+
+#### Report Template
+
+Generate `report.md` following this exact structure. Every section must include the **hypothesis or question being addressed**, the **evidence** (results, tables, figures), and the **conclusion drawn**.
+
+```markdown
+# [Title: Research Question as a Statement]
+
+> **Method**: [Method name] | **Estimand**: [ATE/ATT/LATE/CATE] | **Date**: [YYYY-MM-DD]
+> Generated via `/causal-inference` workflow
+
+---
+
+## Executive Summary
+
+[2-3 sentence summary: What is the causal question? What method was used? What is the main finding?
+State the point estimate, confidence interval, and practical significance in plain language.]
+
+---
+
+## 1. Research Design
+
+### 1.1 Research Question
+- **Causal question**: [Does X cause Y?]
+- **Treatment**: [Description]
+- **Outcome**: [Description]
+- **Unit of analysis**: [Description]
+
+### 1.2 Hypotheses
+- **H1 (main)**: [Treatment has effect on outcome because...]
+- **H0 (null)**: [No causal effect — any observed association is due to...]
+- **Key threat**: [The most plausible alternative explanation]
+
+### 1.3 Identification Strategy
+- **Method chosen**: [Method name and why]
+- **Core assumption**: [In plain language]
+- **Why this method**: [What feature of the data/setting makes this appropriate]
+- **Alternatives considered**: [Other methods and why they were not preferred]
+
+### 1.4 Conceptual Framework
+[Optional: DAG, causal diagram, or verbal description of the causal mechanism.
+If structural model: write out the agent's optimization problem.]
+
+---
+
+## 2. Data
+
+### 2.1 Data Sources
+[Description of datasets, time period, geographic scope]
+
+### 2.2 Summary Statistics
+
+| Variable | N | Mean | SD | Min | Max |
+|----------|---|------|----|-----|-----|
+| ... | ... | ... | ... | ... | ... |
+
+<details>
+<summary>Code: Summary statistics</summary>
+
+[Python code block]
+
+</details>
+
+### 2.3 Key Patterns
+[Describe relevant patterns in the data. Include time trends, treatment/control comparisons,
+distributions of key variables.]
+
+![Data overview](figures/data_overview.png)
+
+---
+
+## 3. Main Results
+
+### 3.1 Hypothesis
+> **H1**: [Treatment] has a [positive/negative] effect on [outcome] because [mechanism].
+> We test this using [method], which identifies the effect under the assumption that [core assumption].
+
+### 3.2 Primary Estimate
+
+| Specification | Estimate | SE | 95% CI | p-value | N |
+|--------------|---------|-----|--------|---------|---|
+| **Preferred** | ... | ... | [..., ...] | ... | ... |
+
+**Interpretation**: [In plain language. Include economic/practical magnitude.
+E.g., "A 10% increase in minimum wage is associated with a 1.5% decrease in employment,
+equivalent to approximately X,XXX jobs."]
+
+![Main results](figures/main_results.png)
+
+<details>
+<summary>Code: Main estimation</summary>
+
+[Python code block]
+
+</details>
+
+### 3.3 Dynamic Effects (if applicable)
+[Event study plot, time-varying treatment effects, pre-treatment trends]
+
+![Event study](figures/event_study.png)
+
+**Pre-treatment assessment**: [Are pre-treatment coefficients jointly and individually
+insignificant? Describe the pattern.]
+
+---
+
+## 4. Robustness & Sensitivity
+
+### 4.1 Identification Threats (Layer 1)
+
+> **Question**: Does the core identification assumption hold?
+
+| Test | Result | Pass/Flag | Interpretation |
+|------|--------|-----------|---------------|
+| [Test name] | [Statistic] | ✓ / ⚠ | [What this means] |
+| ... | ... | ... | ... |
+
+[Detailed discussion of any flagged tests]
+
+### 4.2 Specification Sensitivity (Layer 2)
+
+> **Question**: Is the result robust to alternative modeling choices?
+
+![Specification curve](figures/specification_curve.png)
+
+**Result**: Across [N] specifications varying [what was varied], the estimate ranges
+from [min] to [max]. [All/Most/Some] specifications yield statistically significant
+estimates with the same sign as the preferred specification.
+
+<details>
+<summary>Full specification table</summary>
+
+| # | Outcome | Controls | FE | Cluster | Estimate | SE | p |
+|---|---------|----------|-----|---------|---------|-----|---|
+| ... | ... | ... | ... | ... | ... | ... | ... |
+
+</details>
+
+### 4.3 Sample Robustness (Layer 3)
+
+> **Question**: Is the result driven by specific subgroups or outliers?
+
+![Leave-one-out](figures/leave_one_out.png)
+
+| Subsample | Estimate | SE | N | Note |
+|-----------|---------|-----|---|------|
+| Full sample | ... | ... | ... | Baseline |
+| Drop outliers (1%/99%) | ... | ... | ... | |
+| Early period only | ... | ... | ... | |
+| Late period only | ... | ... | ... | |
+| ... | ... | ... | ... | |
+
+### 4.4 Inference Robustness (Layer 4)
+
+> **Question**: Are the p-values reliable under alternative inference methods?
+
+| Inference Method | SE | p-value | Significant (5%)? |
+|-----------------|-----|---------|-------------------|
+| Heteroskedasticity-robust | ... | ... | ... |
+| Cluster-robust (unit) | ... | ... | ... |
+| Cluster-robust (group) | ... | ... | ... |
+| Wild cluster bootstrap | ... | ... | ... |
+| Randomization inference | ... | ... | ... |
+
+### 4.5 Sensitivity to Unobservables (Layer 5)
+
+> **Question**: How much unobserved confounding would be needed to explain away the result?
+
+| Measure | Value | Threshold | Interpretation |
+|---------|-------|-----------|---------------|
+| Oster's δ | ... | > 1 | ... |
+| Robustness Value (RV) | ... | > max observed partial R² | ... |
+| Rosenbaum Γ | ... | > 2 | ... |
+
+![Sensitivity contour](figures/sensitivity_contour.png)
+
+**Conclusion**: [An unobserved confounder would need to be [X] times as strong as
+[strongest observed confounder] to explain away the result.]
+
+### 4.6 Placebo & Falsification Tests (Layer 6)
+
+> **Question**: Does the method produce null results where no effect is expected?
+
+![Placebo outcomes](figures/placebo_outcomes.png)
+![Placebo timing](figures/placebo_timing.png)
+
+| Placebo Test | Estimate | SE | p-value | Expected | Pass? |
+|-------------|---------|-----|---------|----------|-------|
+| Placebo outcome: [name] | ... | ... | ... | ≈ 0 | ✓ / ✗ |
+| Placebo timing (t-4) | ... | ... | ... | ≈ 0 | ✓ / ✗ |
+| ... | ... | ... | ... | ... | ... |
+
+### 4.7 Cross-Method Comparison (Layer 7)
+
+> **Question**: Do alternative identification strategies yield similar conclusions?
+
+![Cross-method forest plot](figures/cross_method_forest.png)
+
+| Method | Estimate | SE | 95% CI | Key Assumption |
+|--------|---------|-----|--------|---------------|
+| ... | ... | ... | ... | ... |
+
+**Conclusion**: [Agreement/disagreement across methods with different identifying assumptions.]
+
+---
+
+## 5. Discussion
+
+### 5.1 Summary of Findings
+[Restate the main result and key robustness findings. What is the headline number?]
+
+### 5.2 Mechanisms
+[If applicable: What explains the effect? Mediation analysis, heterogeneity, structural decomposition.]
+
+### 5.3 Limitations
+
+[Generated from Phase 6 results. Be specific:]
+
+> Our results are robust to [list of passed checks including specification sensitivity,
+> alternative inference methods, placebo tests, and sensitivity analysis (Oster's δ = X)].
+>
+> We note the following limitations:
+> - [Limitation 1 from any flagged robustness check]
+> - [Limitation 2: external validity concern]
+> - [Limitation 3: data limitation]
+>
+> These limitations suggest caution in [specific interpretation].
+
+### 5.4 Policy Implications
+[What does this mean for policy/practice? Be specific about the population and context
+to which the results apply.]
+
+---
+
+## 6. Robustness Summary Dashboard
+
+### Overall Assessment
+
+| Category | Status | Key Evidence |
+|----------|--------|-------------|
+| Identification | ✓ Supported / ⚠ Concerns | [1-line summary] |
+| Specification stability | ✓ Robust / ⚠ Sensitive | [Range of estimates] |
+| Sample robustness | ✓ Stable / ⚠ Driven by subset | [Most influential subset] |
+| Inference | ✓ Reliable / ⚠ Fragile | [Weakest inference method result] |
+| Unobservable sensitivity | ✓ Robust / ⚠ Sensitive | [δ or RV value] |
+| Placebo tests | ✓ Pass / ⚠ Fail | [Number passed / total] |
+| Cross-method | ✓ Consistent / ⚠ Divergent | [Range across methods] |
+
+### Verdict
+> **[STRONG / MODERATE / SUGGESTIVE]**: The causal effect of [treatment] on [outcome]
+> is estimated to be [estimate] ([CI]). This finding is [robust to / sensitive to]
+> [key robustness dimensions].
+
+---
+
+## Appendix
+
+### A. Full Robustness Table
+[Complete table with all specifications from Layer 2]
+
+### B. Additional Figures
+[Any supplementary figures not shown in main text]
+
+### C. Reproduction Code
+
+<details>
+<summary>Full analysis code</summary>
+
+[All Python code needed to reproduce the analysis from raw data to final figures,
+organized sequentially]
+
+</details>
+```
+
+#### How to Generate the Report
+
+Throughout Phases 1-6, **accumulate report content** by maintaining a Python dictionary or list that captures:
+
+```python
+# Report accumulator — build this throughout the session
+report = {
+    'title': '',
+    'date': '',
+    'research_question': '',
+    'treatment': '',
+    'outcome': '',
+    'unit': '',
+    'estimand': '',
+    'method': '',
+    'core_assumption': '',
+    'main_estimate': None,  # {'estimate': float, 'se': float, 'ci': tuple, 'pvalue': float, 'n': int}
+    'figures': [],          # [{'filename': str, 'caption': str, 'section': str}]
+    'robustness_layers': {
+        'identification': [],    # [{'test': str, 'result': str, 'pass': bool, 'interpretation': str}]
+        'specification': [],     # [{'spec': str, 'estimate': float, 'se': float, ...}]
+        'sample': [],
+        'inference': [],
+        'sensitivity': {},       # {'oster_delta': float, 'rv': float, ...}
+        'placebo': [],
+        'cross_method': [],
+    },
+    'limitations': [],
+    'code_blocks': [],      # [{'section': str, 'code': str}]
+}
+```
+
+#### Figure Saving Convention
+
+All code that generates plots should follow this pattern:
+
+```python
+import os
+os.makedirs('causal_analysis_report/figures', exist_ok=True)
+
+# ... matplotlib plotting code ...
+
+plt.savefig('causal_analysis_report/figures/FIGURE_NAME.png',
+            dpi=150, bbox_inches='tight', facecolor='white')
+plt.show()
+```
+
+The report references figures as `![caption](figures/FIGURE_NAME.png)`.
+
+#### Code Block Convention
+
+All code in the report should be wrapped in collapsible `<details>` blocks (unless the user requested visible code):
+
+```markdown
+<details>
+<summary>Code: [description]</summary>
+
+\```python
+[code here]
+\```
+
+</details>
+```
+
+#### When to Generate
+
+- **Incrementally**: Offer to write each section as its phase completes ("I can add this to your report now.")
+- **On demand**: If the user says "generate the report" at any point, compile everything available so far.
+- **At the end**: After Phase 6 completes, proactively ask: "Ready to compile the full report?"
+
+#### Report Quality Checklist
+
+Before delivering the report, verify:
+- [ ] Every section has a **hypothesis or question** stated before the evidence
+- [ ] Every table and figure has a **caption** and **interpretation**
+- [ ] All figures are saved to `figures/` and referenced correctly
+- [ ] The robustness summary dashboard is filled out
+- [ ] The limitations section reflects actual robustness check results
+- [ ] Code blocks are present for reproduction
+- [ ] The verdict in the dashboard matches the evidence presented
+- [ ] No placeholder text remains (no "..." or "[TODO]")
+
+#### Presentation Slides (HTML)
+
+After the report is generated, offer to create a **concise HTML presentation** summarizing the key findings. Use the `/frontend-slides` skill to generate a single-file, animation-rich HTML slide deck.
+
+Ask: "Would you like me to also generate a presentation slide deck (HTML) summarizing your analysis?"
+
+If yes, invoke the `/frontend-slides` skill with a brief that includes:
+
+**Slide structure** (8-12 slides, concise and to the point):
+
+| Slide | Content |
+|-------|---------|
+| **1. Title** | Research question, author, date |
+| **2. Motivation** | Why this question matters (1-2 bullet points) |
+| **3. Research Design** | Treatment, outcome, method, core assumption — as a clean visual |
+| **4. Data** | Key summary statistics; sample size; data structure |
+| **5. Main Result** | The headline number: point estimate, CI, interpretation. One key figure (event study, RD plot, etc.) |
+| **6. Mechanism / Heterogeneity** | If applicable: who is most affected? Through what channel? |
+| **7. Robustness Dashboard** | The summary table from Section 6 of the report — all ✓/⚠ at a glance |
+| **8. Key Robustness Figure** | The single most compelling robustness figure (specification curve, sensitivity contour, or placebo plot) |
+| **9. Limitations** | 2-3 bullet points, honest and specific |
+| **10. Conclusion & Policy** | Main takeaway, policy implication, one sentence |
+
+**Design guidelines for the slides**:
+- Clean, minimal aesthetic (think academic seminar, not marketing deck)
+- Large fonts for estimates and key numbers
+- Embed figures from `causal_analysis_report/figures/` as base64 images or reference paths
+- Use color to highlight: green for robust results, amber for flagged concerns
+- Tables should be simple and readable — no more than 5 rows per slide
+- Animate key numbers (fade in the point estimate, then the CI)
+
+**Implementation**: When generating the slides, pass the report content to the `/frontend-slides` skill with these instructions. The slides should be saved as `causal_analysis_report/presentation.html`.
+
+---
+
 ## Special Topics
 
 If the user's problem involves any of these, raise them proactively:

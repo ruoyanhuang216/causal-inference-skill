@@ -15,7 +15,8 @@ When you invoke `/causal-inference`, the skill starts an interactive conversatio
 | **3. Method Selection** | Navigate a decision tree across reduced-form and structural approaches to find the right method(s) |
 | **4. Assumption Diagnostics** | Walk through method-specific checklists to validate your identification strategy |
 | **5. Implementation** | Get Python code templates, key packages, and reporting guidance |
-| **6. Robustness Checks** | Interactive, layered robustness workflow: identification threats, specification sensitivity, sample robustness, inference checks, sensitivity to unobservables, placebo tests, cross-method comparison, and publication-ready output |
+| **6. Robustness Checks** | Interactive, layered robustness workflow: identification threats, specification sensitivity, sample robustness, inference checks, sensitivity to unobservables, placebo tests, cross-method comparison |
+| **7. Report & Presentation** | Generate a structured markdown report with hypothesis-driven narrative, embedded figures, robustness dashboard, limitations, and reproducible code. Optionally generate an HTML presentation slide deck via `/frontend-slides`. |
 
 ## Methods Covered
 

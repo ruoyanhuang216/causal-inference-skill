@@ -1442,6 +1442,351 @@ plt.show()
 
 ---
 
+## 14. Report Generation (Phase 7)
+
+### Report Scaffolding & Figure Management
+```python
+import os
+from datetime import date
+
+# ── Create report directory structure ──
+report_dir = 'causal_analysis_report'
+figures_dir = os.path.join(report_dir, 'figures')
+os.makedirs(figures_dir, exist_ok=True)
+
+def save_figure(fig, name, caption=''):
+    """Save a matplotlib figure to the report figures directory."""
+    path = os.path.join(figures_dir, f'{name}.png')
+    fig.savefig(path, dpi=150, bbox_inches='tight', facecolor='white')
+    print(f'Saved: {path}')
+    return f'![{caption}](figures/{name}.png)'
+
+# ── Report accumulator ──
+# Build this throughout the analysis; used to compile the final report
+report_data = {
+    'title': 'Effect of [Treatment] on [Outcome]',
+    'date': date.today().isoformat(),
+    'research_question': '',
+    'treatment': '',
+    'outcome': '',
+    'unit': '',
+    'estimand': '',  # ATE, ATT, LATE, CATE
+    'method': '',
+    'core_assumption': '',
+    'why_method': '',
+    'alternatives_considered': '',
+    'main_estimate': {
+        'estimate': None,
+        'se': None,
+        'ci_lower': None,
+        'ci_upper': None,
+        'pvalue': None,
+        'n': None,
+    },
+    'robustness': {
+        'identification': [],  # [{'test': str, 'result': str, 'pass': bool, 'note': str}]
+        'specifications': [],  # [{'name': str, 'estimate': float, 'se': float, 'pvalue': float, 'n': int}]
+        'subsamples': [],
+        'inference': [],       # [{'method': str, 'se': float, 'pvalue': float, 'significant': bool}]
+        'sensitivity': {},     # {'oster_delta': float, 'rv': float, ...}
+        'placebos': [],        # [{'test': str, 'estimate': float, 'pvalue': float, 'pass': bool}]
+        'cross_method': [],    # [{'method': str, 'estimate': float, 'se': float, 'assumption': str}]
+    },
+    'figures': [],            # [{'ref': str (markdown ref), 'section': str}]
+    'limitations': [],
+    'code_blocks': [],        # [{'section': str, 'label': str, 'code': str}]
+}
+```
+
+### Compile Report from Accumulated Data
+```python
+def generate_report(rd):
+    """Generate the full markdown report from the report_data dictionary."""
+
+    # Helper: format code block in <details>
+    def code_block(label, code):
+        return f'''<details>
+<summary>Code: {label}</summary>
+
+```python
+{code}
+```
+
+</details>'''
+
+    # Helper: robustness status
+    def status(passed):
+        return '✓' if passed else '⚠'
+
+    # ── Build main estimate table ──
+    me = rd['main_estimate']
+    main_table = f'''| Specification | Estimate | SE | 95% CI | p-value | N |
+|--------------|---------|-----|--------|---------|---|
+| **Preferred** | {me["estimate"]:.4f} | {me["se"]:.4f} | [{me["ci_lower"]:.4f}, {me["ci_upper"]:.4f}] | {me["pvalue"]:.4f} | {me["n"]:,} |'''
+
+    # ── Build identification threats table ──
+    id_rows = '\n'.join([
+        f'| {t["test"]} | {t["result"]} | {status(t["pass"])} | {t["note"]} |'
+        for t in rd['robustness']['identification']
+    ])
+    id_table = f'''| Test | Result | Status | Interpretation |
+|------|--------|--------|---------------|
+{id_rows}''' if id_rows else '*No identification tests recorded yet.*'
+
+    # ── Build inference table ──
+    inf_rows = '\n'.join([
+        f'| {t["method"]} | {t["se"]:.4f} | {t["pvalue"]:.4f} | {"Yes" if t["significant"] else "No"} |'
+        for t in rd['robustness']['inference']
+    ])
+    inf_table = f'''| Inference Method | SE | p-value | Significant (5%)? |
+|-----------------|-----|---------|-------------------|
+{inf_rows}''' if inf_rows else '*No inference robustness tests recorded yet.*'
+
+    # ── Build sensitivity summary ──
+    sens = rd['robustness']['sensitivity']
+    sens_rows = []
+    if 'oster_delta' in sens:
+        sens_rows.append(f'| Oster\'s δ | {sens["oster_delta"]:.2f} | > 1 | {"Robust" if abs(sens["oster_delta"]) > 1 else "Sensitive"} |')
+    if 'rv' in sens:
+        sens_rows.append(f'| Robustness Value (RV) | {sens["rv"]:.3f} | > max observed partial R² | — |')
+    sens_table = f'''| Measure | Value | Threshold | Interpretation |
+|---------|-------|-----------|---------------|
+{chr(10).join(sens_rows)}''' if sens_rows else '*No sensitivity analysis recorded yet.*'
+
+    # ── Build placebo table ──
+    placebo_rows = '\n'.join([
+        f'| {t["test"]} | {t["estimate"]:.4f} | {t["pvalue"]:.4f} | ≈ 0 | {status(t["pass"])} |'
+        for t in rd['robustness']['placebos']
+    ])
+    placebo_table = f'''| Placebo Test | Estimate | p-value | Expected | Pass? |
+|-------------|---------|---------|----------|-------|
+{placebo_rows}''' if placebo_rows else '*No placebo tests recorded yet.*'
+
+    # ── Build cross-method table ──
+    cm_rows = '\n'.join([
+        f'| {t["method"]} | {t["estimate"]:.4f} | {t["se"]:.4f} | [{t["estimate"]-1.96*t["se"]:.4f}, {t["estimate"]+1.96*t["se"]:.4f}] | {t["assumption"]} |'
+        for t in rd['robustness']['cross_method']
+    ])
+    cm_table = f'''| Method | Estimate | SE | 95% CI | Key Assumption |
+|--------|---------|-----|--------|---------------|
+{cm_rows}''' if cm_rows else '*No cross-method comparison recorded yet.*'
+
+    # ── Build robustness dashboard ──
+    def layer_status(items, key='pass'):
+        if not items:
+            return '—', 'Not tested'
+        passed = sum(1 for i in items if i.get(key, True))
+        total = len(items)
+        return (status(passed == total), f'{passed}/{total} passed')
+
+    id_s, id_e = layer_status(rd['robustness']['identification'])
+    spec_s = ('✓', f'{len(rd["robustness"]["specifications"])} specs tested') if rd['robustness']['specifications'] else ('—', 'Not tested')
+    sample_s = ('✓', f'{len(rd["robustness"]["subsamples"])} subsamples') if rd['robustness']['subsamples'] else ('—', 'Not tested')
+    inf_s, inf_e = layer_status(rd['robustness']['inference'], key='significant')
+    placebo_s, placebo_e = layer_status(rd['robustness']['placebos'])
+
+    # ── Build limitations ──
+    limitations_text = '\n'.join([f'- {l}' for l in rd['limitations']]) if rd['limitations'] else '- No specific limitations identified from robustness checks.'
+
+    # ── Assemble report ──
+    report = f'''# {rd["title"]}
+
+> **Method**: {rd["method"]} | **Estimand**: {rd["estimand"]} | **Date**: {rd["date"]}
+> Generated via `/causal-inference` workflow
+
+---
+
+## Executive Summary
+
+We estimate the causal effect of {rd["treatment"]} on {rd["outcome"]} using {rd["method"]}.
+The main finding is an estimated effect of {me["estimate"]:.4f} (95% CI: [{me["ci_lower"]:.4f}, {me["ci_upper"]:.4f}]),
+which is {"statistically significant" if me["pvalue"] < 0.05 else "not statistically significant"} at the 5% level (p = {me["pvalue"]:.4f}).
+
+---
+
+## 1. Research Design
+
+### 1.1 Research Question
+- **Causal question**: {rd["research_question"]}
+- **Treatment**: {rd["treatment"]}
+- **Outcome**: {rd["outcome"]}
+- **Unit of analysis**: {rd["unit"]}
+- **Estimand**: {rd["estimand"]}
+
+### 1.2 Identification Strategy
+- **Method**: {rd["method"]}
+- **Core assumption**: {rd["core_assumption"]}
+- **Why this method**: {rd["why_method"]}
+- **Alternatives considered**: {rd["alternatives_considered"]}
+
+---
+
+## 2. Main Results
+
+### 2.1 Primary Estimate
+
+{main_table}
+
+---
+
+## 3. Robustness & Sensitivity
+
+### 3.1 Identification Threats
+
+{id_table}
+
+### 3.2 Specification Sensitivity
+
+{"![Specification curve](figures/specification_curve.png)" if any(f["section"] == "specification" for f in rd["figures"]) else "*Specification curve not generated.*"}
+
+### 3.3 Inference Robustness
+
+{inf_table}
+
+### 3.4 Sensitivity to Unobservables
+
+{sens_table}
+
+{"![Sensitivity contour](figures/sensitivity_contour.png)" if any(f["section"] == "sensitivity" for f in rd["figures"]) else ""}
+
+### 3.5 Placebo & Falsification Tests
+
+{placebo_table}
+
+{"![Placebo outcomes](figures/placebo_outcomes.png)" if any(f["section"] == "placebo" for f in rd["figures"]) else ""}
+
+### 3.6 Cross-Method Comparison
+
+{cm_table}
+
+{"![Cross-method forest plot](figures/cross_method_forest.png)" if any(f["section"] == "cross_method" for f in rd["figures"]) else ""}
+
+---
+
+## 4. Robustness Dashboard
+
+| Category | Status | Evidence |
+|----------|--------|----------|
+| Identification | {id_s} | {id_e} |
+| Specification stability | {spec_s[0]} | {spec_s[1]} |
+| Sample robustness | {sample_s[0]} | {sample_s[1]} |
+| Inference | {inf_s} | {inf_e} |
+| Unobservable sensitivity | {"✓" if sens.get("oster_delta", 0) and abs(sens["oster_delta"]) > 1 else "⚠" if sens else "—"} | {"δ = " + f'{sens["oster_delta"]:.2f}' if "oster_delta" in sens else "Not tested"} |
+| Placebo tests | {placebo_s} | {placebo_e} |
+| Cross-method | {"✓" if rd["robustness"]["cross_method"] else "—"} | {f'{len(rd["robustness"]["cross_method"])} methods compared' if rd["robustness"]["cross_method"] else "Not tested"} |
+
+---
+
+## 5. Limitations
+
+{limitations_text}
+
+---
+
+## Appendix: Reproduction Code
+
+'''
+
+    # Add all code blocks
+    for cb in rd['code_blocks']:
+        report += f'''
+{code_block(cb["label"], cb["code"])}
+'''
+
+    return report
+
+# ── Write report to file ──
+report_text = generate_report(report_data)
+with open(os.path.join(report_dir, 'report.md'), 'w') as f:
+    f.write(report_text)
+print(f'Report written to {report_dir}/report.md')
+```
+
+### Helper: Add Results to Report Throughout the Workflow
+```python
+# ── Use these helpers during Phases 1-6 to accumulate data ──
+
+def add_main_estimate(rd, estimate, se, pvalue, n):
+    """Record the main result from Phase 5."""
+    rd['main_estimate'] = {
+        'estimate': estimate,
+        'se': se,
+        'ci_lower': estimate - 1.96 * se,
+        'ci_upper': estimate + 1.96 * se,
+        'pvalue': pvalue,
+        'n': n,
+    }
+
+def add_identification_test(rd, test_name, result_str, passed, note):
+    """Record an identification test from Phase 6 Layer 1."""
+    rd['robustness']['identification'].append({
+        'test': test_name, 'result': result_str, 'pass': passed, 'note': note
+    })
+
+def add_specification(rd, name, estimate, se, pvalue, n):
+    """Record a specification from Phase 6 Layer 2."""
+    rd['robustness']['specifications'].append({
+        'name': name, 'estimate': estimate, 'se': se, 'pvalue': pvalue, 'n': n
+    })
+
+def add_inference_test(rd, method, se, pvalue):
+    """Record an inference robustness test from Phase 6 Layer 4."""
+    rd['robustness']['inference'].append({
+        'method': method, 'se': se, 'pvalue': pvalue, 'significant': pvalue < 0.05
+    })
+
+def add_sensitivity(rd, **kwargs):
+    """Record sensitivity measures from Phase 6 Layer 5."""
+    rd['robustness']['sensitivity'].update(kwargs)
+
+def add_placebo(rd, test_name, estimate, pvalue, threshold=0.05):
+    """Record a placebo test from Phase 6 Layer 6."""
+    rd['robustness']['placebos'].append({
+        'test': test_name, 'estimate': estimate, 'pvalue': pvalue, 'pass': pvalue > threshold
+    })
+
+def add_cross_method(rd, method, estimate, se, assumption):
+    """Record a cross-method comparison from Phase 6 Layer 7."""
+    rd['robustness']['cross_method'].append({
+        'method': method, 'estimate': estimate, 'se': se, 'assumption': assumption
+    })
+
+def add_figure(rd, fig, name, caption, section):
+    """Save figure and record it in report data."""
+    ref = save_figure(fig, name, caption)
+    rd['figures'].append({'ref': ref, 'section': section})
+    return ref
+
+def add_code(rd, section, label, code):
+    """Record a code block for the appendix."""
+    rd['code_blocks'].append({'section': section, 'label': label, 'code': code})
+
+def add_limitation(rd, text):
+    """Record a limitation discovered during robustness checks."""
+    rd['limitations'].append(text)
+
+# ── Example usage throughout the workflow ──
+# Phase 1:
+# report_data['research_question'] = 'Does minimum wage increase reduce employment?'
+# report_data['treatment'] = 'State-level minimum wage increase'
+# ...
+#
+# Phase 5:
+# add_main_estimate(report_data, estimate=model.coef()[0], se=model.se()[0],
+#                   pvalue=model.pvalue()[0], n=model.nobs)
+#
+# Phase 6:
+# add_identification_test(report_data, 'Parallel pre-trends (joint F)',
+#                         'F=1.23, p=0.31', True, 'Pre-treatment coefficients jointly insignificant')
+# add_sensitivity(report_data, oster_delta=2.34, rv=0.12)
+# add_placebo(report_data, 'Placebo outcome: weather', 0.002, 0.89)
+#
+# Phase 7:
+# report_text = generate_report(report_data)
+```
+
+---
+
 ## Key Python Packages Summary
 
 | Method | Primary Package | Alternative |
