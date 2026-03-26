@@ -397,15 +397,13 @@ def fig5_cross_method_forest():
     ax.set_yticks(y_pos)
     ax.set_yticklabels(methods, fontsize=10)
     ax.set_xlabel('Estimate (ATT)')
-    ax.set_title('Cross-Method Comparison — Forest Plot')
+    ax.set_title('Cross-Method Comparison — Forest Plot\n', fontsize=13, fontweight='bold')
+    # Subtitle with summary
+    ax.text(0.5, 1.01, 'All 5 methods: negative, statistically significant',
+            transform=ax.transAxes, fontsize=9.5, va='bottom', ha='center',
+            color=C_GREEN, fontweight='bold')
     ax.set_xlim(-0.035, 0.025)
     ax.invert_yaxis()
-
-    # Summary
-    ax.text(0.98, 0.98, 'All 5 methods: negative,\nstatistically significant',
-            transform=ax.transAxes, fontsize=8.5, va='top', ha='right',
-            color=C_GREEN, fontweight='bold',
-            bbox=dict(boxstyle='round,pad=0.3', facecolor='#D1FAE5', edgecolor='#059669', alpha=0.8))
 
     fig.savefig(f'{OUTDIR}/fig5_cross_method_forest.pdf')
     fig.savefig(f'{OUTDIR}/fig5_cross_method_forest.png')
