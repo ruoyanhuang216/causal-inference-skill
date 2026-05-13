@@ -4,6 +4,8 @@ An interactive [Claude Code](https://docs.anthropic.com/en/docs/claude-code) ski
 
 Designed for social scientists, economists, political scientists, epidemiologists, marketing scientists, and applied researchers working on causal questions — covering both reduced-form and structural approaches.
 
+> **Industry data scientists:** see also the concise, opinionated [`industry-playbook/`](./industry-playbook/) — a parallel guide focused on "what to actually do on Monday morning" with a single decision tree, simple-method-first-then-escalate progression, and industry-pragmatic framing (DML by default, causal forest for CATE, Cinelli-Hazlett RV for sensitivity).
+
 ## What It Does
 
 When you invoke `/causal-inference`, the skill starts an interactive conversation that walks you through 5 phases:
