@@ -192,6 +192,26 @@ Use when: Single unit (or aggregate) time series with a clear intervention point
 | With a comparison series | Comparative ITS (CITS) |
 | Bayesian approach | CausalImpact (Brodersen et al. 2015) |
 
+#### Track B7: Experimentation at Scale (Industry / Product DS)
+
+When the setting is an online platform or product and standard user/cookie-level randomization breaks down, use these designs. Decision tree:
+
+**Geo experiments + iROAS** — Use when user/cookie randomization fails (multi-device users, offline or lagged conversions that can't be tied to an arm).
+- Randomize **whole geos / DMAs** instead of users; estimate the counterfactual for treated geos from pretest history + control geos (SCM / matched-markets / time-based regression).
+- Metric: **iROAS = Δrevenue / Δspend** (incremental return on ad spend).
+- **SUTVA "bleed"** is the main threat: guard with DMA-level units, **buffer "donut" regions** between treated/control geos, and **graph-partitioned allocation** of units to arms.
+- **Digital / borderless platforms** (no natural geography): build **"virtual DMAs"** via **Louvain / Leiden community detection** on the interaction network graph → validate cluster separation with **modularity** → stress-test spillover with an **SIR contagion simulation** → confirm balance with a **geo-level A/A test** before running the real experiment.
+
+**Ramp-up time confounding** — Use when the treatment:control assignment weight changes over time AND a time-based confounder is present (day-of-week, seasonality, novelty effects) ⇒ naive ATE is **biased**.
+- **Partial-traffic ramp** (assignment stays 50/50, only the share of traffic entering the experiment grows): **safe** — within-experiment comparison is unbiased.
+- **Full-traffic ramp** (the T:C weights themselves change over time): **biased** — later epochs over-weight treatment exactly when the confounder shifts.
+- Fix via **epoch-conditioning**: estimate the effect within each epoch, then reweight epoch effects by total traffic (not by arm share).
+- **MAB / Thompson-Sampling lock-in**: a bandit is a *continuous* ramp — under a time confounder it can lock onto the arm that happened to be favored during a confounded window. Treat adaptive allocation as a ramp and epoch-condition accordingly.
+
+**Confounded feedback loops (rankers / recommenders)** — Use when quality ↔ placement are confounded in logged data (high-quality items get shown more, so observed engagement conflates item quality with exposure).
+- Fix via **alternating optimization**: a **massive observational stream** learns the quality/relevance score, while a **small randomized holdback** learns the causal effect of placement; each serves as the other's **fixed offset**.
+- The **causal parameter is learned only on the randomized data** — the observational stream never identifies it, it only supplies the high-variance nuisance/quality component.
+
 #### Track C: Observational / Selection-on-Observables Methods
 
 If treatment assignment is non-random but you believe you can control for all confounders:
@@ -242,6 +262,16 @@ If the user needs flexible functional forms, heterogeneous effects, or high-dime
 | **Meta-learners** | S-learner, T-learner, X-learner, R-learner, DR-learner for CATE estimation |
 | **Modified Causal Forest** | Athey, Tibshirani & Wager (2019) with local centering |
 | **Causal Discovery** | PC algorithm, GES, NOTEARS — learn DAG structure from data |
+
+**Uplift targeting layer (after CATE)**: Estimating τ̂(X) is only half the job — add the *targeting / decision* layer on top.
+- **Four quadrants** by treatment response: **Persuadables** (respond only if treated — target these), **Sure-Things** (respond regardless — wasted treatment), **Lost-Causes** (never respond — wasted treatment), **Sleeping-Dogs** (**negative uplift** — treatment *hurts*; must NOT treat).
+- **Offline evaluation** (requires randomized data): **Qini curve**, **AUUC** (area under the uplift curve), **decile / bucket uplift** charts — rank units by τ̂(X) and check that top deciles show larger realized treatment-control gaps.
+- **Breakeven decision rule**: treat a unit iff **τ̂(X) > c / V** — cost of treatment *c* divided by value of the outcome *V*. This turns a continuous CATE into an actionable policy.
+
+**DML traps (cross-fitting done right)**:
+- **Nested cross-fitting**: tune nuisance-model hyperparameters in an **inner CV loop** so they never see the outer causal fold — otherwise tuning leakage breaks Neyman orthogonality and invalidates the CIs.
+- **The √N guarantee**: cross-fitting + Neyman orthogonality make the bias the *product* of the two nuisance errors, so even slow (n^{1/4}-rate) ML nuisances yield a **√N-consistent** treatment estimate with valid confidence intervals.
+- **DAG-driven feature selection**: **INCLUDE confounders**, but **DROP mediators** (on the T→M→Y path — controlling them zeroes out the very effect you want) and **DROP colliders** (caused by both T and Y — conditioning on them induces Berkson's-paradox spurious bias). "Throw everything in" is wrong even for ML methods.
 
 #### Track G: Structural Estimation (Marketing Science / IO / Labor)
 
@@ -1070,6 +1100,7 @@ If the user's problem involves any of these, raise them proactively:
 - Correlated Random Effects (Mundlak/Chamberlain)
 - First Differencing vs. Fixed Effects trade-offs
 - Arellano-Bond / Blundell-Bond GMM for dynamic panels
+- **Empirical-Bayes partial pooling for sparse high-cardinality categoricals**: for a group effect with few observations per level (user, zip, SKU), prefer **random-effects / Empirical-Bayes adaptive shrinkage** over Ridge's single global λ. Each group is shrunk toward the prior by its own weight **W_j = n_j / (n_j + σ²_data / σ²_prior)** — data-rich groups barely shrink, data-poor groups shrink hard, and **cold start (n_j = 0 → the prior) is automatic**. The per-group **posterior variance** then bridges directly to **Thompson Sampling** for explore/exploit decisions.
 
 ### External Validity / Generalizability
 - Site selection bias

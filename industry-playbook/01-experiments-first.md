@@ -97,6 +97,28 @@ city-aggregate metrics with cluster SE.
 control-unit interactions with treated units. <5% → SUTVA-assuming
 estimate is probably fine; 20%+ → cluster-randomize.
 
+### Geo experiments & iROAS (post-cookie measurement)
+
+When user/cookie randomization fails — multi-device users, offline or
+lagged conversions, deprecated third-party cookies — **randomize whole
+geos / DMAs** instead. Structure: **pretest → test → cooldown**;
+estimate the counterfactual for treated geos from pretest baselines +
+control geos; then
+
+```
+iROAS  =  Δrevenue / Δspend    (incremental return on ad spend)
+```
+
+**Guard SUTVA "bleed"** (ad exposure leaks across geo borders) with
+**DMA-level units, buffer donuts** (drop border zip codes between T and
+C), and **graph-partitioned allocation**. For borderless
+digital/social platforms with no geography, build **"virtual DMAs"**:
+run **Louvain / Leiden community detection** on the user-interaction
+graph to carve quasi-independent clusters, and validate them by a
+three-step ladder — **modularity score → SIR contagion simulation →
+a geo-A/A test** (null must read null). Tools: **GeoLift**,
+**CausalImpact**.
+
 ---
 
 ## When some users don't comply: ITT vs. CACE
@@ -167,6 +189,27 @@ Industry experiments rarely jump straight to 50/50. Standard ramp:
 Define **auto-rollback bars** in advance (e.g., flag-rate > 2× control,
 single-user-loss > $5K, error rate > 1%). Make the rollback automatic;
 don't trust humans to pull the cord at 2 AM.
+
+### Ramp-up time confounding + MAB lock-in
+
+Changing the **T:C assignment weight over time** *plus* a time-based
+confounder (early-arriving users differ from late ones) ⇒ **biased
+ATE** — the ramp mixes cohorts unevenly across arms. Rule: you may
+grow the *enrolled fraction* of traffic freely, but **never change the
+T:C ratio** mid-flight.
+
+- Partial-traffic ramp at a constant 50/50 (enroll 5% → 50% of
+  traffic, always split evenly) = **safe**.
+- Full-traffic ramp that shifts 90/10 → 50/50 = **biased**.
+
+Fix = **epoch-conditioning**: estimate the effect within each ramp
+epoch (constant ratio) and reweight the within-epoch effects by that
+epoch's total traffic.
+
+**Caution — a multi-armed bandit is a continuous ramp.** Under a
+time-based confounder it locks onto whatever segment dominated early
+traffic and can *lose to a static A/B*. Use a **contextual / restless
+bandit** that conditions on the time/cohort feature.
 
 ---
 

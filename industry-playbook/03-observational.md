@@ -89,6 +89,11 @@ ci = dml.coef__interval()
 - **Compare to OLS with the same controls.** Large divergence
   highlights where ML is finding nonlinear confounding structure
   that OLS missed.
+- **Nested cross-fitting when tuning nuisance learners.** If you
+  hyperparameter-tune the ML nuisances, tune inside an **inner CV
+  loop within each training fold** — never on the fold used to form
+  the causal residuals. Tuning on the residual fold is leakage: it
+  breaks Neyman orthogonality and silently invalidates the CIs.
 
 ### When to use
 
@@ -184,6 +189,29 @@ software ecosystem (`econml`, `doubleml`) is more mature.
 
 Both target the same `τ̂` and converge to similar numbers in
 practice.
+
+---
+
+## Confounded feedback loops (rankers / recommenders)
+
+In production logs, **item quality and placement/prominence are
+confounded** — good items get shown prominently *because* they're
+good — so a naive "does placement lift engagement?" estimate is biased
+upward. You can't residualize your way out because the confounder is
+the system's own past policy.
+
+**Fix — alternating optimization over two data streams:**
+1. The **massive observational log** learns a high-dimensional
+   **quality score** for items.
+2. A **small randomized holdback** (randomize placement for a slice of
+   traffic) learns the **unbiased causal placement effect**.
+3. Fit both by **alternating optimization** — each treats the other as
+   a fixed offset — but the **causal parameter is only ever updated on
+   the randomized data**, so it can't inherit the observational bias.
+
+**Monitor drift** with PSI / KL on the score inputs, plus a **rolling
+holdback ATE as a "causal canary"** — when the randomized-slice effect
+moves, the confounding structure has shifted; refit.
 
 ---
 

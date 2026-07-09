@@ -46,6 +46,40 @@ This document provides in-depth reference material for each causal inference met
 - Cameron, Gelbach & Miller (2008), "Bootstrap-Based Improvements for Inference with Clustered Errors"
 - Baird, Bohren, McIntosh & Ozler (2018)
 
+### 1.3 Geo Experiments & iROAS (Industry Ad/Measurement Design)
+
+**Definition**: Randomize whole geographic regions rather than users/cookies, then estimate a counterfactual for treated geos from control geos. Standard for ad-effectiveness measurement.
+
+**When to use**: User/cookie randomization fails — multi-device users, cookie churn, offline or lagged conversions. Randomize whole regions instead, ideally **DMAs** (Nielsen Designated Market Areas, ~210 in US, clustered by media market + commuting patterns so they absorb commuter "bleed").
+
+**Design phases**: pretest (4–8 wk) / test (3–5 wk) / cooldown. Estimate the counterfactual for treated geos from the pretest period + control geos.
+
+**Headline metric**: **iROAS = incremental revenue / incremental spend**.
+
+**Key Assumptions & Threats**:
+- **SUTVA violation = "bleed"/spillover** across geo borders → attenuation bias. Mitigations: DMAs as sealed units; **buffer "donut" zones** between arms; **graph-partitioned allocation** (assign adjacent geos to the same arm to minimize shared borders).
+- **Small-N heterogeneity** (NY DMA ≫ Anchorage): **stratify/block by geo size**, or pull an extreme outlier into an **N=1 synthetic-control** case study.
+
+**Virtual DMAs** (borderless digital/social platforms): partition the *network graph* via **Louvain/Leiden community detection** (signals: social/co-play graph, experience overlap, temporal cohorts) so cross-cluster information flow is minimized. Validate before spending: **modularity / edge-density ratio → SIR "contagion" simulation → geo A/A test** (measured lift must hug 0).
+
+**Packages**: GeoLift (Meta), CausalImpact, geexperiments / Trimmed-Match (Google).
+
+### 1.4 Ramp-Up Time Confounders & Epoch-Conditioning
+
+**Definition**: When an experiment's **treatment:control assignment weight** changes over time AND a **time-based confounder** exists (arrival time correlated with user type and outcome, e.g. frequent users arrive early), the naive global ATE is biased (a Simpson's paradox).
+
+**Key distinction**:
+- **Partial-traffic ramp** (enroll 2%→10%, always 50/50 *within* the enrolled slice): **SAFE**.
+- **Full-traffic ramp** (100% enrolled, weights 90/10 → 50/50): **BIASED**.
+- **Golden rule**: change *total enrolled traffic* freely, never the *T:C weight*.
+
+**Estimator (fix)**: **epoch-conditioning** — within-epoch arm means recombined by total-traffic weights:
+```
+theta_adj = Sum_j W_j * (ybar_{1,j} - ybar_{0,j}),   W_j = N_j / N_total
+```
+
+**MAB / Thompson-Sampling lock-in**: a bandit is a continuous automated ramp; under a time confounder it locks onto the early-arriving segment and can pick the wrong arm (losing to a static 50/50 A/B). Fix inference by integrating over continuous assignment time; fix routing with a **restless/contextual bandit** (encode time-of-day / day-of-week as state).
+
 ---
 
 ## 2. Difference-in-Differences (DiD)
@@ -354,6 +388,18 @@ where delta is the DiD estimate of the ATT.
 
 **Key Reference**: van der Laan & Rose (2011), *Targeted Learning*
 
+### 7.6 Confounded Feedback Loops & Alternating Optimization
+
+**Definition**: Rankers/recommenders create a feedback loop — the system only shows high-quality items prominently, so item **quality** and **prominence/placement** are confounded in the logs. A naive model's estimate of the placement effect is therefore biased.
+
+**When to use**: Estimating the causal effect of placement/ranking in a logged recommender or search system where the logging policy itself depends on predicted quality.
+
+**Estimator (fix)**: combine a **massive observational stream** (learn a high-dimensional quality score, beta_1 * X_1) with a **small randomized holdback** (~1%, where placement is randomized → learn the unbiased causal effect beta_pi). Fit by **alternating optimization**: each block is the other's fixed **offset**, and the causal parameter beta_pi is updated ONLY on randomized data, quarantining the observational confounding.
+
+**Monitoring**: drift via **PSI/KL** on the quality score, plus a rolling holdback ATE as a "causal canary."
+
+**Extension**: generalizes to HTE by replacing the scalar beta_pi with tau(X_user).
+
 ---
 
 ## 8. Causal Mediation Analysis
@@ -442,6 +488,26 @@ where delta is the DiD estimate of the ATT.
 
 **Diagnostics**: AR(1) and AR(2) tests; Hansen J test for over-identifying restrictions; number of instruments should be << number of groups.
 
+### 10.4 Empirical Bayes / Random-Effects Partial Pooling
+
+**Definition**: For sparse **high-cardinality categoricals** (advertiser / city / campaign IDs; some groups with 10M rows, some with 3), model group effects as random effects alpha_j ~ N(mu, sigma^2_prior) and shrink each group's estimate toward the global mean.
+
+**When to use**: Fixed effects overfit the rare tail; complete pooling underfits. Random effects give adaptive shrinkage between the two.
+
+**Estimator**: the Bayes estimate is adaptive shrinkage:
+```
+alphahat_j = W_j * ybar_j + (1 - W_j) * mu,   W_j = n_j / (n_j + sigma^2_data / sigma^2_prior)
+```
+Shrinks *per group* by its own sample size (vs Ridge's single global lambda = **homogeneous** shrinkage). Conjugate **Gamma–Poisson** for counts gives a closed form: lambdahat_j = (a + c_j) / (b + n_j).
+
+**Cold start** (n=0 → estimate = prior mu) falls out for free.
+
+**Bridge to bandits**: the posterior mean AND variance feed **Thompson Sampling** → automatic explore/exploit (a new arm's wide posterior gets sampled from its tail; variance shrinks → exploration fades).
+
+**Fitting**: **EM** (Empirical-Bayes point estimates; scales), **Gibbs/MCMC** (full posterior).
+
+**Packages**: `statsmodels` MixedLM, `PyMC`, `lme4` / `brms` (R).
+
 ---
 
 ## 11. Time Series Causal Methods
@@ -463,6 +529,14 @@ where D_t = 1 after intervention, T0 is intervention time.
 **Definition**: Bayesian approach that constructs a synthetic counterfactual using control time series and a structural time series model. Posterior inference on the causal effect.
 
 **Advantages**: Automatically handles seasonality, trends, and regression on covariates; provides posterior intervals.
+
+**Control selection**: a **spike-and-slab** prior auto-selects the few predictive control series from many candidates.
+
+**Falsification — in-time placebo / false-positive-rate check**: slide a dummy intervention date across the pre-period; a sound model returns effect ≈ 0 with a CI covering zero.
+
+**Contaminated-control endogeneity**: controls must be *unaffected by the treatment*. Cannibalization (control depressed by the treatment) → **overestimate**; halo (control lifted) → **underestimate**.
+
+**DiD-vs-BSTS decision**: use **DiD** when the pre-period is short/sparse, the analysis is regulated/auditable, or it must be SQL-only; use **BSTS** when you have rich, autocorrelated series with many candidate controls and need honest uncertainty.
 
 **Package**: `CausalImpact` (R), `causalimpact` (Python)
 

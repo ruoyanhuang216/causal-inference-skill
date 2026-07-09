@@ -112,6 +112,27 @@ states; SDiD weights up the few that do co-move.
 - **Permutation placebo** — run SDiD with each control unit playing
   the treated role; the actual treated unit should sit in the tail.
 
+### Escalate to BSTS: single-series reads with honest uncertainty
+
+When you have **one treated unit + many candidate control series** and
+need a counterfactual with a credible interval (not just a point),
+reach for **CausalImpact** — a Bayesian structural time series (BSTS)
+model: local trend + seasonality + **spike-and-slab** priors that do
+automatic control-series selection → posterior counterfactual and
+credible interval for the cumulative effect.
+
+**Load-bearing assumption: controls are unaffected by the treatment.**
+- **Cannibalization** (treatment depresses a control) → effect
+  **overestimated**.
+- **Halo** (treatment lifts a control) → effect **underestimated**.
+
+**Falsify with an in-time placebo:** set a dummy intervention date
+*inside* the pre-period; the estimated effect there must be ≈ 0.
+
+**Choose plain DiD instead** when the pre-period is short (BSTS needs
+enough history to learn trend + seasonality), the setting is
+regulated / auditable, or you need a SQL-only estimate.
+
 ---
 
 ## §2.2 Regression Discontinuity Design (RDD)

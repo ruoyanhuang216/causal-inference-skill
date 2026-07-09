@@ -1787,6 +1787,494 @@ def add_limitation(rd, text):
 
 ---
 
+## 15. E-value (Sensitivity to Unobserved Confounding)
+
+```python
+import numpy as np
+from scipy.stats import norm
+
+# ── E-value: how strong an unmeasured confounder would need to be ──
+# VanderWeele & Ding (2017). Works on the RISK RATIO scale. The E-value is
+# the minimum strength of association (on the RR scale) that an unobserved
+# confounder U would need to have with BOTH the treatment and the outcome —
+# above and beyond the measured covariates — to fully explain away the effect.
+
+def evalue_rr(rr, lo=None, hi=None):
+    """E-value for a risk ratio and (optionally) its confidence interval.
+
+    Parameters
+    ----------
+    rr : float   point-estimate risk ratio (>0)
+    lo, hi : float   lower/upper CI limits on the RR scale (optional)
+
+    Returns
+    -------
+    dict with the point E-value and the E-value for the CI limit closest to 1.
+    """
+    def _e(x):
+        # invert protective effects so we always work with RR >= 1
+        x = 1.0 / x if x < 1 else x
+        return x + np.sqrt(x * (x - 1.0))
+
+    out = {'evalue_point': _e(rr)}
+
+    # E-value for the CI: use the limit CLOSEST to the null (RR = 1).
+    if lo is not None and hi is not None:
+        if lo <= 1 <= hi:
+            # CI crosses the null -> nothing to explain away
+            out['evalue_ci'] = 1.0
+        elif hi < 1:                      # protective effect, CI below 1
+            out['evalue_ci'] = _e(hi)     # limit closest to 1 is the upper
+        else:                             # harmful effect, CI above 1
+            out['evalue_ci'] = _e(lo)     # limit closest to 1 is the lower
+    return out
+
+
+# ── Approximate conversions to the RR scale (VanderWeele & Ding) ──
+def or_to_rr(or_ratio):
+    """Approximate rare-outcome OR -> RR via the sqrt rule (RR ~ sqrt(OR))."""
+    return np.sqrt(or_ratio)
+
+def smd_to_rr(d):
+    """Standardized mean difference (Cohen's d) -> approximate RR.
+
+    VanderWeele (2017): RR ~ exp(0.91 * d). Use when the outcome is continuous
+    and the effect is reported as a standardized mean difference.
+    """
+    return np.exp(0.91 * d)
+
+
+# ── Example ──
+rr, ci_lo, ci_hi = 1.65, 1.20, 2.27          # e.g. from a Cox / log-binomial model
+res = evalue_rr(rr, ci_lo, ci_hi)
+print(f'Risk ratio: {rr:.2f}  (95% CI {ci_lo:.2f}-{ci_hi:.2f})')
+print(f'E-value (point estimate): {res["evalue_point"]:.2f}')
+print(f'E-value (CI limit closest to null): {res["evalue_ci"]:.2f}')
+print(f'Interpretation: an unobserved confounder would need to be associated with '
+      f'both treatment and outcome by a risk ratio of RR_UD >= {res["evalue_point"]:.2f} '
+      f'each (above measured covariates) to fully explain away the observed effect. '
+      f'To move the CI to include the null, RR_UD >= {res["evalue_ci"]:.2f} suffices.')
+
+# From an odds ratio or a standardized mean difference instead:
+print(f'E-value from OR=1.8:  {evalue_rr(or_to_rr(1.8))["evalue_point"]:.2f}')
+print(f'E-value from d=0.30:  {evalue_rr(smd_to_rr(0.30))["evalue_point"]:.2f}')
+```
+
+---
+
+## 16. Nested Cross-Fitting for DML (Leak-Free Hyperparameter Tuning)
+
+```python
+import numpy as np
+from sklearn.model_selection import KFold, GridSearchCV
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.base import clone
+
+# ── Nested cross-fitting for the partially-linear DML model ──
+# Y = theta * T + g(X) + e ,   T = m(X) + v
+#
+# Orthogonality (Neyman) of the DML score requires that the nuisance
+# predictions ĝ(X), m̂(X) for a given observation are made by a model that
+# NEVER saw that observation. If we tune hyperparameters on the SAME data we
+# then predict, the winning params are chosen partly by fitting noise in the
+# hold-out fold -> tuning leakage -> the orthogonality that debiases theta
+# breaks. The fix: tune in an INNER CV loop that lives entirely inside each
+# OUTER training fold, refit on the full outer-train fold with the chosen
+# params, and only THEN predict the held-out outer fold.
+
+def dml_plr_nested(X, T, Y, base_learner, param_grid,
+                   n_outer=5, n_inner=3, random_state=0):
+    """Nested cross-fit DML for the partially-linear regression coefficient theta."""
+    X, T, Y = np.asarray(X), np.asarray(T, float), np.asarray(Y, float)
+    n = len(Y)
+    Y_res = np.empty(n)   # Ỹ = Y - ĝ(X)   (out-of-fold residuals)
+    T_res = np.empty(n)   # T̃ = T - m̂(X)
+
+    outer = KFold(n_splits=n_outer, shuffle=True, random_state=random_state)
+    for tr, te in outer.split(X):
+        inner = KFold(n_splits=n_inner, shuffle=True, random_state=random_state)
+
+        # --- tune g(X) = E[Y|X] on the OUTER-TRAIN fold only ---
+        gs_y = GridSearchCV(clone(base_learner), param_grid,
+                            cv=inner, scoring='neg_mean_squared_error')
+        gs_y.fit(X[tr], Y[tr])
+        g_model = clone(base_learner).set_params(**gs_y.best_params_)
+        g_model.fit(X[tr], Y[tr])                 # refit on FULL outer-train fold
+
+        # --- tune m(X) = E[T|X] on the OUTER-TRAIN fold only ---
+        gs_t = GridSearchCV(clone(base_learner), param_grid,
+                            cv=inner, scoring='neg_mean_squared_error')
+        gs_t.fit(X[tr], T[tr])
+        m_model = clone(base_learner).set_params(**gs_t.best_params_)
+        m_model.fit(X[tr], T[tr])
+
+        # --- predict the held-out OUTER fold (never seen in tuning or fitting) ---
+        Y_res[te] = Y[te] - g_model.predict(X[te])
+        T_res[te] = T[te] - m_model.predict(X[te])
+
+    # ── Final stage: regress Ỹ on T̃ (no intercept) -> theta ──
+    theta = float(T_res @ Y_res / (T_res @ T_res))
+
+    # Heteroskedasticity-robust SE from the orthogonal score psi = T̃(Ỹ - theta T̃)
+    psi = T_res * (Y_res - theta * T_res)
+    jac = -(T_res @ T_res) / n
+    se = float(np.sqrt(np.mean(psi ** 2) / jac ** 2 / n))
+    return theta, se
+
+
+# ── Example ──
+rng = np.random.default_rng(0)
+n, p = 2000, 10
+X = rng.normal(size=(n, p))
+T = X[:, 0] + 0.5 * X[:, 1] + rng.normal(size=n)
+Y = 1.3 * T + X[:, 0] ** 2 + rng.normal(size=n)   # true theta = 1.3
+
+param_grid = {'max_depth': [3, 5, None], 'min_samples_leaf': [1, 5, 20]}
+theta, se = dml_plr_nested(
+    X, T, Y,
+    base_learner=RandomForestRegressor(n_estimators=300, random_state=0),
+    param_grid=param_grid, n_outer=5, n_inner=3,
+)
+print(f'Nested cross-fit DML theta: {theta:.4f} (SE {se:.4f})')
+print(f'95% CI: [{theta - 1.96*se:.4f}, {theta + 1.96*se:.4f}]  (true = 1.30)')
+```
+
+---
+
+## 17. Empirical-Bayes Partial-Pooling Shrinkage (High-Cardinality Groups)
+
+```python
+import numpy as np
+import pandas as pd
+
+# ── Why: with thousands of sparse groups (users, zip codes, SKUs, ad
+# creatives), a raw per-group mean is noisy and n_j = 0 groups have no
+# estimate at all. Empirical Bayes shrinks each group toward the global
+# prior by an amount that depends on how much data that group has: lots of
+# data -> trust the group; little/none -> fall back to the prior (cold start).
+
+# ═══════════════════════════════════════════
+# (a) Gamma–Poisson closed form  (count / rate data)
+# ═══════════════════════════════════════════
+# c_j events over n_j exposure in group j. Rate lambda_j ~ Gamma(a, b) prior.
+# Posterior is conjugate:  lambda_j | data ~ Gamma(a + c_j, b + n_j)
+#   -> posterior mean  lambda_hat_j = (a + c_j) / (b + n_j)
+# Estimate the prior (a, b) by method-of-moments on the observed group rates.
+
+def gamma_poisson_eb(counts, exposure):
+    counts, exposure = np.asarray(counts, float), np.asarray(exposure, float)
+    rates = counts / np.where(exposure > 0, exposure, np.nan)
+    m = np.nanmean(rates)                      # prior mean  = a / b
+    v = np.nanvar(rates)                       # prior var   = a / b^2
+    # Method of moments:  a/b = m,  a/b^2 = v  ->  b = m/v,  a = m^2/v
+    b = m / v if v > 0 else 1.0
+    a = m * b
+    lam_hat = (a + counts) / (b + exposure)    # n_j = 0 -> a/b = prior mean
+    return lam_hat, a, b
+
+# ═══════════════════════════════════════════
+# (b) Normal shrinkage weight  (continuous group means)
+# ═══════════════════════════════════════════
+# Group mean ybar_j with within-group noise var sigma2_data/n_j, group-level
+# signal var sigma2_prior around global mu. Shrinkage weight:
+#   W_j = n_j / (n_j + sigma2_data / sigma2_prior)
+#   alpha_hat_j = W_j * ybar_j + (1 - W_j) * mu
+# n_j = 0 -> W_j = 0 -> alpha_hat_j = mu  (pure prior; cold start).
+
+def normal_eb(group_means, group_ns, sigma2_data, sigma2_prior, mu):
+    ybar = np.asarray(group_means, float)
+    n = np.asarray(group_ns, float)
+    W = n / (n + sigma2_data / sigma2_prior)
+    return W * ybar + (1 - W) * mu, W
+
+
+# ── Example ──
+rng = np.random.default_rng(1)
+groups = np.arange(6)
+counts = np.array([0, 2, 5, 40, 120, 0])
+exposure = np.array([0, 10, 30, 100, 500, 25])
+lam, a, b = gamma_poisson_eb(counts, exposure)
+print('Gamma-Poisson EB rates (prior mean = a/b = {:.4f}):'.format(a / b))
+for g, c, e, l in zip(groups, counts, exposure, lam):
+    tag = '  <- cold start (n=0 -> prior)' if e == 0 else ''
+    print(f'  group {g}: c={c:>3} n={e:>4}  lambda_hat={l:.4f}{tag}')
+
+means = np.array([3.1, 5.0, 4.2, 4.6, 4.55, 0.0])
+ns    = np.array([2,   3,   30,  200, 900,  0])
+mu = 4.5
+alpha, W = normal_eb(means, ns, sigma2_data=4.0, sigma2_prior=0.25, mu=mu)
+print('\nNormal shrinkage (global mu = {:.2f}):'.format(mu))
+for g, yb, n_, w, al in zip(groups, means, ns, W, alpha):
+    print(f'  group {g}: ybar={yb:.2f} n={n_:>3}  W={w:.3f}  alpha_hat={al:.3f}')
+
+# ═══════════════════════════════════════════
+# Optional: Thompson Sampling loop (Beta–Bernoulli bandit)
+# ═══════════════════════════════════════════
+# Each arm has a Beta(alpha, beta) posterior over its success rate. On each
+# round we SAMPLE one draw from every arm's posterior, pull the arm with the
+# max draw, observe a reward, and update that arm — automatically balancing
+# exploration (wide posteriors) against exploitation (high means).
+def thompson_sampling(true_rates, n_rounds=5000, seed=0):
+    rng = np.random.default_rng(seed)
+    k = len(true_rates)
+    alpha = np.ones(k); beta = np.ones(k)      # uniform priors
+    pulls = np.zeros(k, int)
+    for _ in range(n_rounds):
+        draws = rng.beta(alpha, beta)          # one posterior sample per arm
+        arm = int(np.argmax(draws))            # pick the max draw
+        reward = rng.random() < true_rates[arm]
+        alpha[arm] += reward; beta[arm] += 1 - reward
+        pulls[arm] += 1
+    return pulls, alpha / (alpha + beta)
+
+pulls, post_means = thompson_sampling([0.03, 0.05, 0.08, 0.055])
+print('\nThompson sampling pulls per arm:', pulls.tolist(),
+      '| best arm =', int(np.argmax(post_means)))
+```
+
+---
+
+## 18. Geo Experiment: iROAS (TBR/GeoLift) + Virtual DMAs
+
+```python
+import numpy as np
+import pandas as pd
+import statsmodels.api as sm
+
+# ═══════════════════════════════════════════
+# (a) TBR / GeoLift-style iROAS
+# ═══════════════════════════════════════════
+# Fit a control -> treated relationship on the PRE-test period, project the
+# treated counterfactual through the test window, and read off the incremental
+# response. iROAS = incremental response / incremental spend.
+
+def tbr_iroas(treated_pre, control_pre, treated_test, control_test,
+              spend_delta_test):
+    """Time-Based Regression incremental ROAS.
+
+    treated_pre/control_pre : pretest series (aligned by period)
+    treated_test/control_test : test-window series
+    spend_delta_test : incremental media spend in the treated geo during test
+    """
+    # Pretest fit: treated ~ a + b * control  (control captures common shocks)
+    Xpre = sm.add_constant(np.asarray(control_pre, float))
+    fit = sm.OLS(np.asarray(treated_pre, float), Xpre).fit()
+
+    # Counterfactual treated response in the test window (had there been no ad)
+    Xtest = sm.add_constant(np.asarray(control_test, float), has_constant='add')
+    counterfactual = fit.predict(Xtest)
+
+    incremental = np.asarray(treated_test, float) - counterfactual
+    iroas = incremental.sum() / np.asarray(spend_delta_test, float).sum()
+    return iroas, incremental, counterfactual
+
+# ── Example ──
+rng = np.random.default_rng(2)
+ctrl_pre = rng.normal(100, 10, 40)
+trt_pre = 1.2 * ctrl_pre + rng.normal(0, 3, 40)          # treated tracks control
+ctrl_test = rng.normal(100, 10, 14)
+trt_test = 1.2 * ctrl_test + rng.normal(0, 3, 14) + 8.0  # +8/day true lift
+spend = np.full(14, 5.0)
+iroas, incr, cf = tbr_iroas(trt_pre, ctrl_pre, trt_test, ctrl_test, spend)
+print(f'Total incremental response: {incr.sum():.1f}')
+print(f'Total incremental spend:    {spend.sum():.1f}')
+print(f'iROAS: {iroas:.3f}  (incremental response per $ of incremental spend)')
+
+# ═══════════════════════════════════════════
+# (b) Virtual DMAs via community detection + geo-A/A check
+# ═══════════════════════════════════════════
+# Real DMAs can be too small / correlated for clean geo tests. Build "virtual
+# DMAs" by clustering geos that co-interact (spillover, shared media), then
+# validate the design with a geo-A/A test: randomly split the clusters into
+# sham arms and confirm the measured lift is ~0 (a nonzero A/A lift means the
+# clustering leaked structure that will bias real experiments).
+import networkx as nx
+
+def build_virtual_dmas(edges):
+    """edges: list of (geo_i, geo_j, weight) co-interaction tuples."""
+    G = nx.Graph()
+    for i, j, w in edges:
+        G.add_edge(i, j, weight=w)
+    try:                                                   # networkx >= 3.0
+        comms = nx.community.louvain_communities(G, weight='weight', seed=0)
+    except AttributeError:
+        comms = nx.community.greedy_modularity_communities(G, weight='weight')
+    modularity = nx.community.modularity(G, comms, weight='weight')
+    geo2cluster = {g: c for c, comm in enumerate(comms) for g in comm}
+    return comms, geo2cluster, modularity, G
+
+def geo_aa_check(cluster_outcomes, geo2cluster, seed=0):
+    """Assign clusters to two sham arms; measured A/A lift should be ~0."""
+    rng = np.random.default_rng(seed)
+    clusters = sorted(set(geo2cluster.values()))
+    arm = {c: rng.integers(0, 2) for c in clusters}
+    a = [v for g, v in cluster_outcomes.items() if arm[geo2cluster[g]] == 0]
+    b = [v for g, v in cluster_outcomes.items() if arm[geo2cluster[g]] == 1]
+    return np.mean(a) - np.mean(b)          # sham "lift"
+
+# ── Example ──
+edges = [('NYC', 'Newark', 5), ('NYC', 'Boston', 1), ('LA', 'SD', 4),
+         ('LA', 'SF', 2), ('SF', 'SD', 1), ('Newark', 'Boston', 3)]
+comms, geo2cluster, modularity, G = build_virtual_dmas(edges)
+print(f'\nVirtual DMAs (n={len(comms)}): {[sorted(c) for c in comms]}')
+print(f'Modularity: {modularity:.3f}  (higher = cleaner cluster separation)')
+
+outcomes = {'NYC': 102, 'Newark': 99, 'Boston': 101, 'LA': 98, 'SD': 100, 'SF': 97}
+aa_lift = geo_aa_check(outcomes, geo2cluster)
+print(f'Geo-A/A sham lift: {aa_lift:.3f}  (should be ~0; large => design leaks)')
+```
+
+---
+
+## 19. Uplift Evaluation (Qini / AUUC / Decile-Uplift)
+
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# ── Requires RANDOMIZED data. The Qini/AUUC curves compare the outcomes of
+# treated vs control units among those the MODEL ranks as most persuadable.
+# Because targeting is by PREDICTED uplift but treatment was assigned at
+# random, the treated/control contrast within any top-k slice is unbiased.
+# On observational data these curves are confounded and meaningless.
+
+def qini_curve(uplift_pred, treatment, outcome):
+    """Cumulative Qini curve: incremental gains vs random targeting.
+
+    Returns fraction-targeted grid and cumulative Qini values.
+    """
+    order = np.argsort(-np.asarray(uplift_pred))     # best-scored first
+    t = np.asarray(treatment)[order]
+    y = np.asarray(outcome, float)[order]
+
+    n_t = np.cumsum(t)                               # treated seen so far
+    n_c = np.cumsum(1 - t)                           # control seen so far
+    y_t = np.cumsum(y * t)                           # treated responses
+    y_c = np.cumsum(y * (1 - t))                     # control responses
+
+    # Qini: treated responses minus control responses rescaled to treated count
+    with np.errstate(divide='ignore', invalid='ignore'):
+        qini = y_t - y_c * np.where(n_c > 0, n_t / n_c, 0.0)
+    frac = np.arange(1, len(t) + 1) / len(t)
+    return frac, qini
+
+def qini_coefficient(frac, qini):
+    """AUUC / Qini coefficient = area between the model curve and the random
+    (straight-line) baseline, normalized to [-1, 1]-ish (higher is better)."""
+    baseline = qini[-1] * frac                       # random targeting = diagonal
+    area_model = np.trapz(qini, frac)
+    area_base = np.trapz(baseline, frac)
+    return area_model - area_base
+
+def decile_uplift_table(uplift_pred, treatment, outcome, q=10):
+    """Empirical ATE within each predicted-uplift decile.
+
+    A well-calibrated model shows MONOTONICALLY DECLINING empirical uplift
+    from the top decile (most persuadable) to the bottom.
+    """
+    df = pd.DataFrame({'pred': uplift_pred, 't': treatment, 'y': outcome})
+    df['decile'] = pd.qcut(df['pred'].rank(method='first'), q,
+                           labels=range(q, 0, -1))     # 10 = highest predicted
+    rows = []
+    for d, g in df.groupby('decile', observed=True):
+        ate = g.loc[g.t == 1, 'y'].mean() - g.loc[g.t == 0, 'y'].mean()
+        rows.append({'decile': int(d), 'n': len(g),
+                     'pred_uplift': g['pred'].mean(), 'empirical_ate': ate})
+    return pd.DataFrame(rows).sort_values('decile', ascending=False)
+
+
+# ── Example ──
+rng = np.random.default_rng(3)
+n = 5000
+X = rng.normal(size=n)
+T = rng.integers(0, 2, n)                              # randomized assignment
+true_uplift = 0.3 * (X > 0)                            # only X>0 units respond
+Y = (rng.random(n) < 0.2 + true_uplift * T).astype(int)
+pred = 0.3 * (X > 0) + rng.normal(0, 0.05, n)          # model's predicted uplift
+
+frac, qini = qini_curve(pred, T, Y)
+q_coef = qini_coefficient(frac, qini)
+print(f'Qini coefficient (AUUC vs random): {q_coef:.2f}  (>0 = model beats random)')
+print('\nDecile-uplift table (top decile should have the largest empirical ATE):')
+print(decile_uplift_table(pred, T, Y).to_string(index=False))
+
+plt.figure(figsize=(7, 5))
+plt.plot(frac, qini, 'b-', label='Model (Qini)')
+plt.plot(frac, qini[-1] * frac, 'k--', label='Random targeting')
+plt.xlabel('Fraction of population targeted')
+plt.ylabel('Cumulative incremental outcomes')
+plt.title('Qini Curve')
+plt.legend()
+plt.show()
+```
+
+---
+
+## 20. BSTS Contaminated-Control Diagnostic
+
+```python
+import numpy as np
+import pandas as pd
+import statsmodels.formula.api as smf
+
+# ── For CausalImpact / BSTS / synthetic-control style designs, every control
+# series must be UNAFFECTED by the intervention — otherwise the counterfactual
+# absorbs part of the treatment effect and the estimated impact is biased
+# toward zero (a "contaminated" or "spillover" control). Screen each candidate
+# control by regressing it on a post-intervention dummy (plus trend/season
+# controls). A significant post coefficient flags a control that itself
+# responds to the treatment -> drop it before fitting the model.
+
+def screen_controls(data, control_cols, post_col='post',
+                    trend_col='t', season_col=None, alpha=0.05):
+    """Flag control series that respond to the intervention.
+
+    data : DataFrame with a post-period dummy, a trend, optional season, and
+           one column per candidate control series.
+    Returns a table of coefficients / p-values and the list of flagged controls.
+    """
+    rows, flagged = [], []
+    for c in control_cols:
+        rhs = f'{post_col} + {trend_col}'
+        if season_col is not None:
+            rhs += f' + C({season_col})'
+        m = smf.ols(f'Q("{c}") ~ {rhs}', data=data).fit(
+            cov_type='HAC', cov_kwds={'maxlags': 4})     # autocorrelation-robust
+        coef = m.params[post_col]
+        pval = m.pvalues[post_col]
+        is_flag = pval < alpha
+        rows.append({'control': c, 'post_coef': coef, 'p_value': pval,
+                     'contaminated': is_flag})
+        if is_flag:
+            flagged.append(c)
+    return pd.DataFrame(rows), flagged
+
+
+# ── Example ──
+rng = np.random.default_rng(4)
+T = 120
+t = np.arange(T)
+post = (t >= 80).astype(int)
+season = t % 12
+base = 50 + 0.1 * t + 3 * np.sin(2 * np.pi * season / 12)
+data = pd.DataFrame({
+    't': t, 'post': post, 'season': season,
+    'clean_ctrl_1': base + rng.normal(0, 2, T),
+    'clean_ctrl_2': base * 1.1 + rng.normal(0, 2, T),
+    'dirty_ctrl':   base + 6.0 * post + rng.normal(0, 2, T),  # jumps post-intervention
+})
+
+table, flagged = screen_controls(
+    data, ['clean_ctrl_1', 'clean_ctrl_2', 'dirty_ctrl'],
+    post_col='post', trend_col='t', season_col='season')
+print(table.to_string(index=False))
+print(f'\nFlagged (contaminated) controls to DROP: {flagged}')
+print('Keep only the un-flagged controls when fitting CausalImpact/BSTS.')
+```
+
+---
+
 ## Key Python Packages Summary
 
 | Method | Primary Package | Alternative |
@@ -1813,3 +2301,9 @@ def add_limitation(rd, text):
 | Wild Bootstrap | `wildboottest` | — |
 | Multiple Testing | `statsmodels.stats.multitest` | — |
 | Randomization Inference | `numpy` (manual) | `randomizr` |
+| E-value sensitivity | `numpy`, `scipy` (manual) | `EValue` (R) |
+| Nested cross-fit DML | `sklearn`, `numpy` (manual) | `doubleml`, `econml` |
+| Empirical-Bayes shrinkage | `numpy`, `pandas` (manual) | `PyMC`, `NumPyro` |
+| Geo experiment / iROAS | `statsmodels`, `networkx` | `GeoLift` (R), `tbrsim` |
+| Uplift (Qini / AUUC) | `numpy`, `pandas` (manual) | `scikit-uplift`, `causalml` |
+| Contaminated-control screen | `statsmodels` (manual) | — |

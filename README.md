@@ -24,7 +24,8 @@ When you invoke `/causal-inference`, the skill starts an interactive conversatio
 
 The skill covers the full landscape of modern causal inference methods:
 
-- **Experimental**: RCT, Cluster RCT, Stratified Randomization, Adaptive Experiments
+- **Experimental**: RCT, Cluster RCT, Stratified Randomization, Adaptive Experiments, Multi-Armed Bandits / Thompson Sampling
+- **Experimentation at Scale (industry)**: Geo Experiments & iROAS (DMAs, buffer donuts, graph-partitioned allocation, Virtual DMAs via Louvain/Leiden), Ramp-up Time-Confounding & Epoch-Conditioning, Confounded Feedback Loops & Alternating Optimization (observational + randomized holdback), Uplift Targeting (Qini/AUUC, breakeven τ>c/V)
 - **Difference-in-Differences**: Classic 2x2, Staggered DiD (Callaway-Sant'Anna, Sun-Abraham, de Chaisemartin-D'Haultfoeuille, Borusyak-Jaravel-Spiess, Gardner, Wooldridge), Triple Differences
 - **Regression Discontinuity**: Sharp RD, Fuzzy RD, Regression Kink, Geographic RD, Multi-cutoff RD
 - **Instrumental Variables**: 2SLS, LIML, GMM, Shift-Share/Bartik, Judge/Examiner IV, Mendelian Randomization

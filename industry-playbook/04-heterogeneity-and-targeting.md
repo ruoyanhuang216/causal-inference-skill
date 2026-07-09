@@ -179,6 +179,19 @@ operating-point metric at a fixed budget.
 Area under the uplift curve; similar to Qini with different
 normalization. Some packages report AUUC instead.
 
+### Breakeven targeting rule
+
+Qini / AUUC rank users; the **breakeven rule** sets the *cutoff*. With
+treatment cost `c` and outcome value `V`, treat a user iff
+
+```
+τ̂(X)  >  c / V        (incremental value clears its cost)
+```
+
+Then take the top segments by `τ̂(X)` **up to the budget** (the binding
+constraint usually bites before the breakeven threshold does). This
+turns the 4-segment quadrants into an actual send/skip decision.
+
 ### Sanity check before deploying
 
 - **Randomized historical training data.** Observational uplift
@@ -266,6 +279,30 @@ Farbmacher-Huber-Lafférs-Langen-Spindler (2022) extends the
 Neyman-orthogonality trick to mediation, using ML for the four
 nuisance functions (treatment-given-X, mediator-given-T-and-X,
 outcome-given-M-T-X, etc.). Same software ecosystem as DML.
+
+---
+
+## Many small segments / cold start: partial pooling + Thompson
+
+When you have **hundreds of small segments or campaigns**, a single
+global Ridge `λ` shrinks everyone by the same amount — wrong, because a
+big segment barely needs shrinking and a tiny one needs a lot. Prefer
+**random-effects adaptive shrinkage** (empirical Bayes), which pools
+each group toward the prior in proportion to its own noise:
+
+```
+W_j  =  n_j / ( n_j + σ²_data / σ²_prior )      (per-group weight)
+τ̂_j  =  W_j · (raw group estimate)  +  (1 − W_j) · prior_mean
+```
+
+A brand-new segment (`n = 0`) has `W_j = 0` and **shrinks fully to the
+prior automatically** — clean cold start, no special-casing.
+
+**Thompson bridge for exploration.** Feed the **posterior variance**
+of each `τ̂_j` into **Thompson Sampling** — sample each segment's effect
+from its posterior and treat the argmax. New / uncertain segments have
+wide posteriors, so they get explored **exactly as much as their
+uncertainty warrants**, and confident segments get exploited.
 
 ---
 

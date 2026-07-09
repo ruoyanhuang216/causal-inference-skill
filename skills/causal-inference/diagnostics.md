@@ -12,6 +12,7 @@ This document provides method-specific diagnostic checklists. For each method, i
 - [ ] **Pre-registration**: Was a pre-analysis plan filed? Follow it.
 
 ### Post-Analysis
+- [ ] **Ramp-up assignment-weight check** (online experiments): Did the treatment:control ratio change over the run (e.g., 90/10 → 50/50 full-traffic ramp)? If yes AND a time-based confounder is plausible (arrival-time ↔ user type), the pooled ATE is biased — epoch-condition (reweight within constant-weight epochs by total traffic). Changing only the total enrolled fraction at a constant 50/50 split is fine.
 - [ ] **Attrition check**: Test whether attrition rates differ by treatment. Test whether attrition is predicted by treatment x baseline covariates interaction.
 - [ ] **ITT vs. LATE**: If non-compliance, report ITT (reduced form) as primary and LATE (IV) as secondary.
 - [ ] **Lee bounds**: If differential attrition, compute bounds on the treatment effect.
@@ -94,6 +95,7 @@ This document provides method-specific diagnostic checklists. For each method, i
 - [ ] **Visual comparison**: Plot treated unit vs. synthetic control over the full pre-treatment period.
 - [ ] **RMSPE**: Report pre-treatment root mean squared prediction error. Should be small relative to the outcome's scale.
 - [ ] **Weights**: Report donor weights. Very sparse weights (one or two donors dominating) may be fragile.
+- [ ] **Contaminated-control / endogeneity check** (also DiD, CausalImpact/BSTS): Donor/control series must be unaffected by the treatment. Test: a valid control shows no discontinuity at the intervention date (regress each control on a treatment-period dummy; flag significant breaks). Bias if violated: control depressed (cannibalization) → overestimate the effect; control lifted (halo/spillover) → underestimate. For digital ecosystems prefer structurally isolated controls (other-platform, economically orthogonal categories, upstream pre-treatment metrics).
 
 ### Inference
 - [ ] **Placebo / permutation test**: Run SCM for every donor unit. Plot the distribution of placebo effects. Where does the treated unit rank?
@@ -104,6 +106,7 @@ This document provides method-specific diagnostic checklists. For each method, i
 - [ ] **Leave-one-out donor**: Re-estimate dropping each major donor. Results should be stable.
 - [ ] **Alternate predictor sets**: Show results with different sets of matching variables.
 - [ ] **In-time placebo**: Apply SCM using a pre-treatment period as the "intervention time." Effect should be near zero.
+- [ ] **In-time placebo / false-positive-rate check** (BSTS/CausalImpact & SCM): Slide a dummy intervention date across the pre-treatment period and re-estimate; a sound model returns effect ≈0 with credible/confidence intervals covering zero. Persistent nonzero "effects" on null dates ⇒ overfitting/misspecification — don't trust the real estimate.
 - [ ] **Backdating**: Shift treatment date earlier. Effect should appear only at actual treatment time.
 
 ---
@@ -133,7 +136,9 @@ This document provides method-specific diagnostic checklists. For each method, i
 ## 7. Machine Learning Causal Methods
 
 ### Double/Debiased ML (DML)
+- [ ] **DAG feature-selection check**: Confirm the adjustment set contains confounders only. Exclude mediators (variables on the T→M→Y path — controlling them blocks the effect → biased toward zero) and exclude colliders (caused by both T and Y — conditioning induces Berkson's-paradox spurious correlation). Draw the DAG before choosing features.
 - [ ] **Cross-fitting**: Use K >= 2 folds (5 is common). Report sensitivity to K.
+- [ ] **Nested cross-fitting check**: Hyperparameter tuning of ML nuisances must occur in an inner CV loop within each training fold, never on the fold used to compute the causal residuals — otherwise tuning leakage violates orthogonality and invalidates the CIs.
 - [ ] **ML model performance**: Report out-of-sample R-squared for nuisance models.
 - [ ] **Sensitivity to ML method**: Try different ML algorithms (lasso, random forest, boosting). Results should be stable.
 - [ ] **Compare to parametric**: Report OLS/logit alongside DML. Large differences suggest nonlinearity matters.
@@ -144,6 +149,7 @@ This document provides method-specific diagnostic checklists. For each method, i
 - [ ] **CLAN analysis**: Characterize the most- and least-affected groups.
 - [ ] **Best linear projection**: Summarize heterogeneity via linear model of CATE on key covariates.
 - [ ] **Overlap assumption**: Like all observational methods, requires overlap.
+- [ ] **Uplift-model validation check**: Uplift/CATE targeting models can only be validated offline on randomized data (decile-uplift monotonicity, Qini/AUUC above the random baseline). Confounded/observational test data makes these diagnostics meaningless.
 
 ---
 
