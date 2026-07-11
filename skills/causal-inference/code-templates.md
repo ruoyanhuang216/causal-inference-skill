@@ -1924,16 +1924,18 @@ def dml_plr_nested(X, T, Y, base_learner, param_grid,
 
 # ── Example ──
 rng = np.random.default_rng(0)
-n, p = 2000, 10
+n, p = 1500, 10
 X = rng.normal(size=(n, p))
 T = X[:, 0] + 0.5 * X[:, 1] + rng.normal(size=n)
 Y = 1.3 * T + X[:, 0] ** 2 + rng.normal(size=n)   # true theta = 1.3
 
-param_grid = {'max_depth': [3, 5, None], 'min_samples_leaf': [1, 5, 20]}
+# Grid / forest kept small so the nested loop runs in ~30s as a demo; in
+# production widen the grid ([3,5,None] x [1,5,20]) and raise n_estimators.
+param_grid = {'max_depth': [5, None], 'min_samples_leaf': [5, 20]}
 theta, se = dml_plr_nested(
     X, T, Y,
-    base_learner=RandomForestRegressor(n_estimators=300, random_state=0),
-    param_grid=param_grid, n_outer=5, n_inner=3,
+    base_learner=RandomForestRegressor(n_estimators=80, random_state=0),
+    param_grid=param_grid, n_outer=4, n_inner=3,
 )
 print(f'Nested cross-fit DML theta: {theta:.4f} (SE {se:.4f})')
 print(f'95% CI: [{theta - 1.96*se:.4f}, {theta + 1.96*se:.4f}]  (true = 1.30)')
@@ -2107,9 +2109,15 @@ def geo_aa_check(cluster_outcomes, geo2cluster, seed=0):
     """Assign clusters to two sham arms; measured A/A lift should be ~0."""
     rng = np.random.default_rng(seed)
     clusters = sorted(set(geo2cluster.values()))
-    arm = {c: rng.integers(0, 2) for c in clusters}
-    a = [v for g, v in cluster_outcomes.items() if arm[geo2cluster[g]] == 0]
-    b = [v for g, v in cluster_outcomes.items() if arm[geo2cluster[g]] == 1]
+    if len(clusters) < 2:
+        raise ValueError("geo-A/A needs >= 2 clusters to form two arms")
+    # Balanced random split (not independent coin flips per cluster) — a real
+    # geo-A/A splits clusters evenly, and it guarantees neither arm is empty
+    # (independent flips can send every cluster to one arm -> nan lift).
+    shuffled = list(clusters); rng.shuffle(shuffled)
+    arm0 = set(shuffled[: max(1, len(shuffled) // 2)])
+    a = [v for g, v in cluster_outcomes.items() if geo2cluster[g] in arm0]
+    b = [v for g, v in cluster_outcomes.items() if geo2cluster[g] not in arm0]
     return np.mean(a) - np.mean(b)          # sham "lift"
 
 # ── Example ──
@@ -2175,7 +2183,7 @@ def decile_uplift_table(uplift_pred, treatment, outcome, q=10):
     """
     df = pd.DataFrame({'pred': uplift_pred, 't': treatment, 'y': outcome})
     df['decile'] = pd.qcut(df['pred'].rank(method='first'), q,
-                           labels=range(q, 0, -1))     # 10 = highest predicted
+                           labels=range(1, q + 1))     # decile q = highest predicted uplift
     rows = []
     for d, g in df.groupby('decile', observed=True):
         ate = g.loc[g.t == 1, 'y'].mean() - g.loc[g.t == 0, 'y'].mean()
@@ -2206,7 +2214,7 @@ plt.xlabel('Fraction of population targeted')
 plt.ylabel('Cumulative incremental outcomes')
 plt.title('Qini Curve')
 plt.legend()
-plt.show()
+plt.savefig('qini_curve.png', dpi=120, bbox_inches='tight')  # non-blocking; use plt.show() interactively
 ```
 
 ---

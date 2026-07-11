@@ -59,3 +59,18 @@ Added an "Experimentation at Scale (industry)" row to *Methods Covered*.
 ### Verification
 New Python templates syntax-compile clean; the example figure pipeline re-runs successfully
 (`examples/sample-output/generate_figures.py` → 5 figures, exit 0); installed skill copy re-synced.
+
+**Follow-up (each of the six new §15–20 templates executed end-to-end, one by one):** all six now
+run to exit 0. Three fixes surfaced by actually running them (parse-clean ≠ run-clean):
+- **§16 (nested cross-fitting DML):** demo was correct but too heavy (≈270 random-forest fits) and
+  timed out. Trimmed the example forest/grid (`n_estimators` 300→80, grid 3×3→2×2, `n_outer` 5→4,
+  n 2000→1500) so it runs in ~30s and its 95% CI covers the true θ=1.3; added a "widen in production" note.
+- **§18 (geo-A/A check):** `geo_aa_check` assigned each cluster to an arm by an independent coin flip,
+  so with few clusters an arm could end up empty → `np.mean([])` = `nan`. Switched to a balanced random
+  split (guarantees both arms non-empty; also how a real geo-A/A is assigned).
+- **§19 (uplift decile table):** decile labels were inverted (`range(q,0,-1)` sent the *lowest* predicted
+  uplift to decile "10"); fixed to `range(1,q+1)` so decile q is the highest-uplift group and the empirical
+  ATE declines monotonically top→bottom. Also switched the Qini plot's blocking `plt.show()` to `savefig`.
+
+§15 (E-value), §17 (EB shrinkage / cold-start / Thompson), and §20 (BSTS contaminated-control) ran
+correctly as written.
