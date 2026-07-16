@@ -4,6 +4,8 @@ An interactive [Claude Code](https://docs.anthropic.com/en/docs/claude-code) ski
 
 Designed for social scientists, economists, political scientists, epidemiologists, marketing scientists, and applied researchers working on causal questions — covering both reduced-form and structural approaches.
 
+> **Learning or teaching the material?** See [`lectures/`](./lectures/) — a deep-dive lecture series that derives the identification arguments the skill and playbook assume. Start with [Lecture 1: Foundations & Treatment Effects](./lectures/01-foundations-and-estimands.md).
+
 > **Industry data scientists:** see also the concise, opinionated [`industry-playbook/`](./industry-playbook/) — a parallel guide focused on "what to actually do on Monday morning" with a single decision tree, simple-method-first-then-escalate progression, and industry-pragmatic framing (DML by default, causal forest for CATE, Cinelli-Hazlett RV for sensitivity).
 
 ## What It Does
