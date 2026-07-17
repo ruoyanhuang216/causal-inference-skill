@@ -29,6 +29,18 @@ the playbook chapter and skill reference that operationalize it.
 | # | Lecture | Core idea | Deepens |
 | --- | --- | --- | --- |
 | **1** | [Foundations & Treatment Effects](./01-foundations-and-estimands.md) | The counterfactual is missing by construction. ATE / ATT / CATE / ITT / LATE differ only in *whom you average over* — and that choice can flip a ship/no-ship decision. | [`00-foundations.md`](../industry-playbook/00-foundations.md) |
+| **2** | [Experimentation](./02-experimentation/) | Run the simplest experiment that satisfies SUTVA without destroying power. Every design is a trade between the two, and **N is the number of randomization units — never the number of users.** | [`01-experiments-first.md`](../industry-playbook/01-experiments-first.md) |
+
+### Lecture 2 chapters
+
+| # | Chapter | Core idea |
+| --- | --- | --- |
+| 2.1 | [RCT & Assumptions](./02-experimentation/2.1-rct-and-assumptions.md) | Randomization buys one assumption of four. SUTVA, attrition, and compliance are still yours — and SUTVA fails silently. |
+| 2.2 | [Power & Multi-Arm](./02-experimentation/2.2-power-and-multi-arm.md) | The inverse-square law: halving the MDE quadruples runtime. Four arms turn a 10-day test into 35 days. |
+| 2.3 | [Cluster Randomization](./02-experimentation/2.3-cluster-randomization.md) | Cluster on the graph the treatment *interferes* along, not the graph you have. Effective N → K/ρ. |
+| 2.4 | [Geo Experiments & iROAS](./02-experimentation/2.4-geo-experiments.md) | iROAS **is** a Wald ratio — a local derivative, not an average return. 210 DMAs are worth ~13 effective units. |
+| 2.5 | [Switchbacks](./02-experimentation/2.5-switchbacks.md) | The window must exceed the washout. Optimal designs throw away most of the data, and that's correct. |
+| 2.6 | [Ramp-Up & Bandits](./02-experimentation/2.6-ramp-up-and-bandits.md) | Change enrolled traffic freely; change the T:C ratio never. A homogeneous +1.0 effect reads as +4.81 if you break that rule. |
 
 *More lectures to come — the series is written topic by topic.*
 
