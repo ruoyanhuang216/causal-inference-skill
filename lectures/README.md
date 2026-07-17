@@ -49,9 +49,8 @@ the playbook chapter and skill reference that operationalize it.
 | --- | --- | --- |
 | 3.1 | [Classic 2×2 & Geo-Controls](./03-difference-in-differences/3.1-classic-did-and-geo-controls.md) | δ is the interaction coefficient; a 2-period design has *zero* testable pre-trends, so the Miami tourist trap needs a historical placebo, not an event study. |
 | 3.2 | [Synthetic Control](./03-difference-in-differences/3.2-synthetic-control.md) | Weight the donor pool to *force* the pre-trend match. A real fit recovers 0.59 Boston + 0.41 Austin and an ATT of 15.3 vs. a true 15. |
-| 3.3 | [The Staggered TWFE Trap](./03-difference-in-differences/3.3-staggered-twfe-trap.md) | TWFE uses already-treated units as controls. Verified: a true +3.98 effect reports as −1.24. |
-| 3.4 | [Modern Estimators](./03-difference-in-differences/3.4-modern-estimators.md) | Every fix implements "never control on the already-treated." CS assumes *absorbing* treatment — for a toggle-able feature you must pivot to de Chaisemartin-D'Haultfœuille. |
-| 3.5 | [Triple Differences](./03-difference-in-differences/3.5-triple-differences.md) | A second control dimension differences out a shock. Verified: a naive DiD reports +28 for a true +8; DDD recovers +8.3. |
+| 3.3 | [Staggered DiD: The TWFE Trap and Its Fixes](./03-difference-in-differences/3.3-staggered-did.md) | TWFE uses already-treated units as controls (a true +3.98 effect reports as −1.24). Then the fix: every modern estimator implements "never control on the already-treated," and CS assumes *absorbing* treatment — for a toggle-able feature you pivot to de Chaisemartin-D'Haultfœuille. |
+| 3.4 | [Triple Differences](./03-difference-in-differences/3.4-triple-differences.md) | A second control dimension differences out a shock. Verified: a naive DiD reports +28 for a true +8; DDD recovers +8.3. |
 
 *More lectures to come — the series is written topic by topic.*
 
