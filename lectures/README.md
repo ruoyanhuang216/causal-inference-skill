@@ -65,14 +65,26 @@ one book rather than a pile of notes:
 
 ## Conventions
 
-- **Math** is LaTeX (`$...$` inline, `$$...$$` display). Renders natively
-  on GitHub; converts cleanly to Jupyter, Quarto, PDF, or a static site.
+- **Math** is LaTeX. Renders natively on GitHub; converts cleanly to
+  Jupyter, Quarto, PDF, or a static site.
+  - **Inline:** `$...$`.
+  - **Display, single line:** `$$...$$` is fine.
+  - **Display, multi-line: use a ```` ```math ```` fenced block — never
+    `$$`.** GitHub does not reliably parse a multi-line `$$` block as
+    math, and when it fails, markdown eats the body: `_` pairs become
+    `<em>` (deleting your subscripts) and a leading `+ ` becomes a
+    bullet list. The formula isn't just unrendered, it's *corrupted* —
+    and it looks fine in every local previewer. Fenced blocks are immune
+    because fenced code is never markdown-parsed.
 - **Currency is always escaped: `\$50,000`, never `$50,000`.** GitHub reads
   `$...$` as inline math, so two bare amounts on one line — `$250k–$1.25M`
-  — make the parser treat `250k–` as math and swallow it. Inside a `$$`
-  block, `\$` is already correct LaTeX. Run **`python3 check-math.py`**
-  before committing; it flags currency-shaped inline spans and ignores
-  real math like `$i$`, `$2^n$`, and `$1/\pi = 5\times$`.
+  — make the parser treat `250k–` as math and swallow it. Inside a math
+  block, `\$` is already correct LaTeX.
+- **Run `python3 check-math.py` before committing.** It catches both
+  failure modes above — currency-shaped inline spans (while ignoring real
+  math like `$i$`, `$2^n$`, `$1/\pi = 5\times$`) and multi-line `$$`
+  blocks. Both render fine in local previewers and break only on GitHub,
+  which is exactly why they need a checker and not a reviewer.
 - **DAGs** are ASCII box-and-arrow, so they diff in git, need no build
   step, and never rot. Assumed-absent arrows are drawn dashed and
   labeled — because in a DAG, the missing arrows *are* the assumptions.

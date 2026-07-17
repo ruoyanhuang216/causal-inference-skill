@@ -127,11 +127,11 @@ Read the graph as four claims:
 
 The naive comparison decomposes exactly:
 
-$$
+```math
 \underbrace{E[Y \mid D=1] - E[Y \mid D=0]}_{\text{what you can compute}}
-= \underbrace{E[Y(1) - Y(0) \mid D=1]}_{\text{ATT — the causal part}}
+= \underbrace{E[Y(1) - Y(0) \mid D=1]}_{\text{ATT, the causal part}}
 + \underbrace{E[Y(0) \mid D=1] - E[Y(0) \mid D=0]}_{\text{selection bias}}
-$$
+```
 
 The second term compares the treated and untreated groups **in the same state of the world** — both untreated. If they'd have differed anyway, that difference contaminates your estimate one-for-one. Power users adopt the analytics dashboard *and* spend more regardless; the selection bias term is large and positive, and it doesn't shrink with sample size. This decomposition is worth committing to memory: it says the enemy is not noise. Adding data makes noise vanish and leaves bias untouched.
 
