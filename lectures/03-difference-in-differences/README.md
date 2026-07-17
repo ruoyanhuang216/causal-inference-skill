@@ -99,11 +99,11 @@ field is misjudging which cell you're in.
     One treatment    │  YES → §3.1 Classic 2×2 / Geo-DiD
     time (sharp)     │  NO  → §3.2 Synthetic Control (weight controls
                      │        until pre-trends are forced parallel)
-                     │        ...or §3.5 DDD (difference out the shock)
+                     │        ...or §3.4 DDD (difference out the shock)
    ──────────────────┼──────────────────────────────────────────────
     Staggered        │  The TWFE regression you'd reflexively run is
-    adoption         │  BIASED and can flip signs → §3.3 (why) → §3.4
-    (many times)     │  (which modern estimator fixes it)
+    adoption         │  BIASED and can flip signs → §3.3 (the trap AND
+    (many times)     │  the modern estimators that fix it)
 ```
 
 **The horizontal axis is about credibility; the vertical axis is about
@@ -113,8 +113,8 @@ Adding *variation in treatment timing* — the thing that looks like
 "just more data" — silently breaks the standard estimator, because
 two-way fixed effects starts using already-treated units as controls.
 That discovery (Goodman-Bacon 2021 and the wave after it) is the single
-biggest development in applied econometrics of the last decade, and §3.3–3.4
-are entirely about it.
+biggest development in applied econometrics of the last decade, and §3.3 is
+entirely about it.
 
 ---
 
@@ -124,9 +124,8 @@ are entirely about it.
 |---|---|---|---|
 | **3.1** | [Classic 2×2 & Geo-Controls](./3.1-classic-did-and-geo-controls.md) | The regression, coefficient-by-coefficient; event studies; placebos; the Miami/Orlando trap | Every DiD starts here |
 | **3.2** | [Synthetic Control](./3.2-synthetic-control.md) | When parallel trends fails: weight the donor pool to *force* pre-trend match; placebo inference with one treated unit | Single treated market, skeptical control |
-| **3.3** | [The Staggered TWFE Trap](./3.3-staggered-twfe-trap.md) | Goodman-Bacon decomposition; forbidden comparisons; negative weights; the verified sign-flip | Any rollout with variation in timing |
-| **3.4** | [Modern Estimators](./3.4-modern-estimators.md) | Callaway-Sant'Anna, Wooldridge ETWFE, Sun-Abraham, de Chaisemartin-D'Haultfœuille, Borusyak et al., Gardner | Once you know TWFE is broken and need the fix |
-| **3.5** | [Triple Differences](./3.5-triple-differences.md) | DDD: difference out a confounding shock with a second control dimension; the parallel-DiD assumption | Parallel trends implausible, but you have an eligibility split |
+| **3.3** | [Staggered DiD: The TWFE Trap and Its Fixes](./3.3-staggered-did.md) | Goodman-Bacon's four comparisons and the forbidden one; negative weights; the verified sign-flip; then the full estimator zoo (CS, Wooldridge ETWFE, Sun-Abraham, de Chaisemartin-D'Haultfœuille, Borusyak et al., Gardner) with a use-case-first selection guide | Any rollout with variation in timing |
+| **3.4** | [Triple Differences](./3.4-triple-differences.md) | DDD: difference out a confounding shock with a second control dimension; the parallel-DiD assumption | Parallel trends implausible, but you have an eligibility split |
 
 ---
 
@@ -159,7 +158,7 @@ you a data dimension and a subtler assumption to defend.
 
 ## 6. References
 
-- **Roth, Sant'Anna, Bilinski & Poe (2023).** "What's Trending in Difference-in-Differences? A Synthesis of the Recent Econometrics Literature." *Journal of Econometrics.* — The one survey to read; maps the entire modern landscape §3.3–3.4 covers.
+- **Roth, Sant'Anna, Bilinski & Poe (2023).** "What's Trending in Difference-in-Differences? A Synthesis of the Recent Econometrics Literature." *Journal of Econometrics.* — The one survey to read; maps the entire modern landscape §3.3 covers.
 - **Roth (2022).** "Pretest with Caution: Event-Study Estimates After Testing for Parallel Trends." *AER: Insights.* — Why pre-trends ≠ parallel trends (§2).
 - **Goodman-Bacon (2021).** "Difference-in-Differences with Variation in Treatment Timing." *Journal of Econometrics.* — The decomposition that started §3.3.
 - **Callaway & Sant'Anna (2021).** "Difference-in-Differences with Multiple Time Periods." *Journal of Econometrics.*
