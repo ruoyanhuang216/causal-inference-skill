@@ -31,6 +31,7 @@ the playbook chapter and skill reference that operationalize it.
 | **1** | [Foundations & Treatment Effects](./01-foundations-and-estimands.md) | The counterfactual is missing by construction. ATE / ATT / CATE / ITT / LATE differ only in *whom you average over* — and that choice can flip a ship/no-ship decision. | [`00-foundations.md`](../industry-playbook/00-foundations.md) |
 | **2** | [Experimentation](./02-experimentation/) | Run the simplest experiment that satisfies SUTVA without destroying power. Every design is a trade between the two, and **N is the number of randomization units — never the number of users.** | [`01-experiments-first.md`](../industry-playbook/01-experiments-first.md) |
 | **3** | [Difference-in-Differences](./03-difference-in-differences/) | Difference twice to kill fixed confounders and common trends. The estimate is causal only under **parallel trends — untestable by construction** — and the danger is timing variation, not sample size. | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
+| **4** | [Regression Discontinuity](./04-regression-discontinuity/) | A business rule's arbitrary cutoff is a natural experiment: units just above vs. just below are as-good-as-randomized. Cleanest identification in observational work, **narrowest estimand** (a LATE at the cutoff), and it dies on one thing — **manipulation of the running variable.** | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
 
 ### Lecture 2 chapters
 
@@ -51,6 +52,15 @@ the playbook chapter and skill reference that operationalize it.
 | 3.2 | [Synthetic Control](./03-difference-in-differences/3.2-synthetic-control.md) | Weight the donor pool to *force* the pre-trend match. A real fit recovers 0.59 Boston + 0.41 Austin and an ATT of 15.3 vs. a true 15. |
 | 3.3 | [Staggered DiD: The TWFE Trap and Its Fixes](./03-difference-in-differences/3.3-staggered-did.md) | TWFE uses already-treated units as controls (a true +3.98 effect reports as −1.24). Then the fix: every modern estimator implements "never control on the already-treated," and CS assumes *absorbing* treatment — for a toggle-able feature you pivot to de Chaisemartin-D'Haultfœuille. |
 | 3.4 | [Triple Differences](./03-difference-in-differences/3.4-triple-differences.md) | A second control dimension differences out a shock. Verified: a naive DiD reports +28 for a true +8; DDD recovers +8.3. |
+
+### Lecture 4 chapters
+
+| # | Chapter | Core idea |
+| --- | --- | --- |
+| 4.1 | [Sharp RDD](./04-regression-discontinuity/4.1-sharp-rdd.md) | Local randomization at an arbitrary cutoff. Why you center `X−c`: verified, the D coefficient is the jump (5.03) centered, garbage (−69.9) uncentered. |
+| 4.2 | [Fuzzy RDD](./04-regression-discontinuity/4.2-fuzzy-rdd.md) | The cutoff as an instrument; a local Wald/LATE for compliers. The 10% shadowban effect is for the *borderline* users only — not always-takers or never-takers. |
+| 4.3 | [Regression Kink Design](./04-regression-discontinuity/4.3-regression-kink.md) | The policy changes *slope*, not level. Effect = ratio of slope-changes (α₂/γ₂); verified 0.79 vs true 0.8. |
+| 4.4 | [Geographic RD](./04-regression-discontinuity/4.4-geographic-rd.md) | A border is the cutoff; distance is the running variable. The placebo-border test separates policy-gaming from natural spatial clustering. |
 
 *More lectures to come — the series is written topic by topic.*
 
