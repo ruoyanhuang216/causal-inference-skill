@@ -20,10 +20,14 @@ PURE_NUMBER = re.compile(r"^\d+$")  # `$2$` is legitimate math
 
 
 def strip_blocks(src: str) -> str:
-    """Blank out fenced code and $$display$$ math, preserving line numbers."""
+    """Blank out anything GitHub won't parse as inline math, preserving
+    line numbers and columns: fenced code, $$display$$ math, and inline
+    `code` spans (math is not parsed inside code)."""
     blank = lambda m: "\n" * m.group().count("\n")
     src = re.sub(r"```.*?```", blank, src, flags=re.S)
-    return re.sub(r"\$\$.*?\$\$", blank, src, flags=re.S)
+    src = re.sub(r"\$\$.*?\$\$", blank, src, flags=re.S)
+    # Inline code: replace with same-width filler so columns stay honest.
+    return re.sub(r"`[^`\n]*`", lambda m: " " * len(m.group()), src)
 
 
 def spans(line: str):
@@ -50,7 +54,7 @@ def check(path):
 
 
 if __name__ == "__main__":
-    found = [p for f in sorted(glob.glob("*.md")) for p in check(f)]
+    found = [p for f in sorted(glob.glob("**/*.md", recursive=True)) for p in check(f)]
     for p in found:
         print(p)
     print(f"{len(found)} suspected unescaped currency span(s)")
