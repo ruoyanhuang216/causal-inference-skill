@@ -123,7 +123,7 @@ entirely about it.
 | # | Chapter | Covers | Read when |
 |---|---|---|---|
 | **3.1** | [Classic 2×2 & Geo-Controls](./3.1-classic-did-and-geo-controls.md) | The regression, coefficient-by-coefficient; event studies; placebos; the Miami/Orlando trap | Every DiD starts here |
-| **3.2** | [Synthetic Control](./3.2-synthetic-control.md) | When parallel trends fails: weight the donor pool to *force* pre-trend match; placebo inference with one treated unit | Single treated market, skeptical control |
+| **3.2** | [Synthetic Control](./3.2-synthetic-control.md) *(bridge)* | The weighted-control idea in one screen; full treatment (ASCM, SDID, matrix completion, inference) in [Lecture 6](../06-synthetic-control/) | Single treated market, skeptical control |
 | **3.3** | [Staggered DiD: The TWFE Trap and Its Fixes](./3.3-staggered-did.md) | Goodman-Bacon's four comparisons and the forbidden one; negative weights; the verified sign-flip; then the full estimator zoo (CS, Wooldridge ETWFE, Sun-Abraham, de Chaisemartin-D'Haultfœuille, Borusyak et al., Gardner) with a use-case-first selection guide | Any rollout with variation in timing |
 | **3.4** | [Triple Differences](./3.4-triple-differences.md) | DDD: difference out a confounding shock with a second control dimension; the parallel-DiD assumption | Parallel trends implausible, but you have an eligibility split |
 
