@@ -87,7 +87,7 @@ distinction. §6.2 §4.
   regression — the DiD engine — so it inherits DiD's tolerance for level
   differences.
 - **Matrix Completion is the SCM-family cousin of [de Chaisemartin-
-  D'Haultfœuille](../03-difference-in-differences/3.3-staggered-did.md#74-de-chaisemartin--dhaultf%C5%93uille-2020--the-switcher-estimator)** —
+  D'Haultfœuille](../03-difference-in-differences/3.3-staggered-did.md)** —
   both handle *non-absorbing* (toggling) treatment that Callaway-Sant'Anna and
   classic SCM cannot.
 - **CausalImpact** (the Bayesian structural time-series counterfactual) is the
