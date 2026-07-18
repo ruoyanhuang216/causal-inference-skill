@@ -71,6 +71,7 @@ kill. Knowing which mechanic defeats which bias is the whole lecture.
 | **9.1** | [The DML Core](./9.1-dml-core.md) | FWL, the partially linear model, Neyman orthogonality, cross-fitting, the skip-cross-fitting probe | The confounders are high-dimensional / nonlinear |
 | **9.2** | [Applied DML & the Two Gotchas](./9.2-applied-dml.md) | The enterprise-SaaS walkthrough end-to-end; feature importance ≠ causality; overlap still bites | You're building a real DML pipeline |
 | **9.3** | [DML-IV (PLIV)](./9.3-dml-iv.md) | Merging Judge-IV with DML: the collection-agent design, standard-DML ITT vs. DML-IV, the LOO instrument | Treatment is endogenous *and* high-dimensional |
+| **9.4** | [Targeted Learning (TMLE)](./9.4-tmle.md) | The third doubly-robust ATE estimator: a *substitution* estimator whose logistic fluctuation keeps bounded outcomes in [0,1] where AIPW's additive correction explodes | Bounded outcomes (churn, probabilities) with extreme propensities |
 
 ---
 

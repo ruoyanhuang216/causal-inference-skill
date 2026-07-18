@@ -115,6 +115,7 @@ for you.** Five parts, from most-designed to least.
 | 9.1 | [The DML Core](./09-double-machine-learning/9.1-dml-core.md) | FWL + flexible ML + cross-fitting. The junior-skips-cross-fitting probe: residuals shrink 63% (verified), but the SE *cancels* — the real damage is bias, not SE deflation (a correction to the common answer). |
 | 9.2 | [Applied DML & the Two Gotchas](./09-double-machine-learning/9.2-applied-dml.md) | Enterprise-SaaS walkthrough. Gotcha 1: nuisance feature importance ≠ causal. Gotcha 2: a perfect propensity (AUC→1) makes D̃→0 and the estimate 0/0 — overlap still bites. |
 | 9.3 | [DML-IV (PLIV)](./09-double-machine-learning/9.3-dml-iv.md) | Merges Judge-IV with DML for the collection-agent design. Setup 1 (DML for the ITT) vs Setup 2 (three-model residual-2SLS). Use the continuous LOO instrument, not 50 agent dummies. |
+| 9.4 | [Targeted Learning (TMLE)](./09-double-machine-learning/9.4-tmle.md) | The doubly-robust *substitution* estimator. Verified: at e=0.005, AIPW's per-user churn "probability" hits 180 (18,010%) / max 314 across sims; TMLE's logistic fluctuation keeps every prediction in [0,1]. Use for bounded outcomes + extreme propensities. |
 
 ### Lecture 10 chapters
 
