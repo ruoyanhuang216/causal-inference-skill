@@ -51,6 +51,8 @@ it's the half of the comparison you never observe (Lecture 1 §2).
 | **6.1** | [Classic Synthetic Control](./6.1-classic-scm.md) | The convex-hull optimization, the five steps, permutation inference, the RMSPE-ratio and leave-one-out diagnostics | Any single-treated-unit comparative case |
 | **6.2** | [Augmented SCM & Synthetic DiD](./6.2-ascm-and-sdid.md) | When the treated unit is an outlier: ASCM (ridge extrapolation) vs. SDID (fixed-effect intercept shift + time weights) | Classic SCM's pre-fit is poor |
 | **6.3** | [Matrix Completion](./6.3-matrix-completion.md) | Panel causal inference as a missing-data problem; handles staggered + toggling + many treated units | The rollout is too messy for SCM or DiD |
+| **6.4** | [Interrupted Time Series](./6.4-interrupted-time-series.md) | One treated series, *no* control: segmented regression (level vs. slope change); concurrent events and autocorrelation (Newey-West) | You have only the treated series' own history |
+| **6.5** | [CausalImpact (BSTS)](./6.5-causalimpact-bsts.md) | Synthetic-control-for-a-time-series: BSTS + spike-and-slab control selection; contaminated controls; in-time placebo; DiD-vs-BSTS decision matrix | One treated series *with* control series and seasonality |
 
 ---
 
@@ -90,11 +92,11 @@ distinction. §6.2 §4.
   D'Haultfœuille](../03-difference-in-differences/3.3-staggered-did.md)** —
   both handle *non-absorbing* (toggling) treatment that Callaway-Sant'Anna and
   classic SCM cannot.
-- **CausalImpact** (the Bayesian structural time-series counterfactual) is the
-  same "build a synthetic counterfactual" idea for a single treated *time
-  series* with many candidate controls; it's introduced in [Lecture 2 §2.4
-  (geo experiments)](../02-experimentation/2.4-geo-experiments.md#4-estimation)
-  and belongs to this family.
+- **[§6.5 CausalImpact](./6.5-causalimpact-bsts.md)** (the Bayesian structural
+  time-series counterfactual) is the same "build a synthetic counterfactual" idea
+  for a single treated *time series* with many candidate controls — the
+  time-series member of this family, and the sophisticated end of the
+  [§6.4 ITS](./6.4-interrupted-time-series.md) baseline.
 
 ---
 

@@ -101,6 +101,8 @@ for you.** Five parts, from most-designed to least.
 | 6.1 | [Classic Synthetic Control](./06-synthetic-control/6.1-classic-scm.md) | Convex-hull weights, permutation inference (rank by post/pre RMSPE ratio), leave-one-out robustness. Verified: recovers 0.59 Boston + 0.41 Austin, ATT 15.3 vs. true 15. |
 | 6.2 | [Augmented SCM & Synthetic DiD](./06-synthetic-control/6.2-ascm-and-sdid.md) | When the treated unit is a level outlier, classic SCM flatlines (17,184 for a true 500). SDID absorbs the gap with a fixed effect (recovers 497); ASCM extrapolates with ridge — riskier. |
 | 6.3 | [Matrix Completion](./06-synthetic-control/6.3-matrix-completion.md) | Causal inference as a missing-data problem: delete treated cells, impute via low-rank. Handles staggered + toggling + many treated units; verified 2.05 vs true 2.0. |
+| 6.4 | [Interrupted Time Series](./06-synthetic-control/6.4-interrupted-time-series.md) | One series, no control: segmented regression (level β₂ vs. slope β₃). Autocorrelation is lethal — verified 44% false positives on naive SEs; Newey-West mandatory. |
+| 6.5 | [CausalImpact (BSTS)](./06-synthetic-control/6.5-causalimpact-bsts.md) | Synthetic control for a time series; spike-and-slab auto-selects controls. Contaminated controls bias hard (verified: cannibalization inflates +8 to +14). The angry-VP probe: use DiD to break DiD. |
 
 ### Lecture 7 chapters
 
