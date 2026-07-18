@@ -33,7 +33,7 @@ for you.** Five parts, from most-designed to least.
 | --- | --- | --- |
 | **I** | Foundations & design-based ID *(the world randomizes something)* | 1 Foundations · 2 Experimentation · 3 DiD · 4 RDD · 5 IV ✅ |
 | **II** | Comparative-case & panel *(build the counterfactual)* | **6 Synthetic Control ✅** · 7 Panel Data *(planned)* |
-| **III** | Selection on observables & ML *(assume you measured the confounders)* | **8 Selection on Observables ✅** · **9 Double Machine Learning ✅** · 10 Heterogeneity & Uplift *(planned)* |
+| **III** | Selection on observables & ML *(assume you measured the confounders)* | **8 Selection on Observables ✅** · **9 Double Machine Learning ✅** · **10 Heterogeneity & Uplift ✅** |
 | **IV** | Defending & interrogating estimates | 11 Sensitivity & Partial ID · 12 Mediation · 13 DAGs & Discovery *(planned)* |
 | **V** | Structural | 14 Structural Estimation *(planned)* |
 
@@ -51,6 +51,7 @@ for you.** Five parts, from most-designed to least.
 | **6** | [Synthetic Control & Counterfactual Estimators](./06-synthetic-control/) | One or a few treated units, non-parallel controls: **build** the counterfactual from a weighted blend of donors. Convex hull is a feature until it's a wall — then escalate to SDID (subtract the level) or matrix completion (impute messy rollouts). Inference is by **permutation, not standard errors.** | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
 | **8** | [Selection on Observables](./08-selection-on-observables/) | No design at all — assume you measured every confounder, then match or weight. The pivot to the observational world. **PSM solves the curse of dimensionality, not selection bias**; overlap is where it dies; **doubly-robust (AIPW) is the default** — unbiased if *either* model is right. | [`03-observational.md`](../industry-playbook/03-observational.md) |
 | **9** | [Double Machine Learning](./09-double-machine-learning/) | High-dimensional, nonlinear confounders: use ML for the nuisances, OLS for the effect. **FWL + flexible ML + cross-fitting.** Two enemies (regularization bias, overfitting bias), two defenses (Neyman orthogonality, cross-fitting). The IV form merges with Judge-IV (Lecture 5). | [`03-observational.md`](../industry-playbook/03-observational.md) |
+| **10** | [Heterogeneous Effects & Uplift](./10-heterogeneity-and-uplift/) | Stop chasing the ATE — ask *whom to treat.* CATE via causal forests, the **uplift quadrant** (target persuadables, not sure things), Qini evaluation, and distilling scores into deployable IF/ELSE **policy** rules. | [`04-heterogeneity-and-targeting.md`](../industry-playbook/04-heterogeneity-and-targeting.md) |
 
 ### Lecture 2 chapters
 
@@ -114,6 +115,14 @@ for you.** Five parts, from most-designed to least.
 | 9.1 | [The DML Core](./09-double-machine-learning/9.1-dml-core.md) | FWL + flexible ML + cross-fitting. The junior-skips-cross-fitting probe: residuals shrink 63% (verified), but the SE *cancels* — the real damage is bias, not SE deflation (a correction to the common answer). |
 | 9.2 | [Applied DML & the Two Gotchas](./09-double-machine-learning/9.2-applied-dml.md) | Enterprise-SaaS walkthrough. Gotcha 1: nuisance feature importance ≠ causal. Gotcha 2: a perfect propensity (AUC→1) makes D̃→0 and the estimate 0/0 — overlap still bites. |
 | 9.3 | [DML-IV (PLIV)](./09-double-machine-learning/9.3-dml-iv.md) | Merges Judge-IV with DML for the collection-agent design. Setup 1 (DML for the ITT) vs Setup 2 (three-model residual-2SLS). Use the continuous LOO instrument, not 50 agent dummies. |
+
+### Lecture 10 chapters
+
+| # | Chapter | Core idea |
+| --- | --- | --- |
+| 10.1 | [Causal Forests & CATE](./10-heterogeneity-and-uplift/10.1-causal-forests.md) | A causal tree keeps *both* arms in every leaf (each leaf is a local A/B test), splits to maximize heterogeneity in τ, and uses honesty for valid CIs. Control on all X, split on actionable X. |
+| 10.2 | [Uplift & Targeting](./10-heterogeneity-and-uplift/10.2-uplift-and-targeting.md) | The sure-things trap: ranking by predicted *outcome* generates ~0 causal lift (verified −0.005), ranking by *CATE* generates +0.535. Target persuadables; call iff τ̂ > cost; evaluate with Qini/AUUC. |
+| 10.3 | [Policy Learning](./10-heterogeneity-and-uplift/10.3-policy-learning.md) | Distill the black-box forest into a shallow **surrogate policy tree** → a deployable IF/ELSE. Verified: the surrogate recovers the true persuadable rule from the CATE scores alone. |
 
 *More lectures to come — the series is written topic by topic.*
 
