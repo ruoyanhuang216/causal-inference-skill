@@ -32,6 +32,7 @@ the playbook chapter and skill reference that operationalize it.
 | **2** | [Experimentation](./02-experimentation/) | Run the simplest experiment that satisfies SUTVA without destroying power. Every design is a trade between the two, and **N is the number of randomization units — never the number of users.** | [`01-experiments-first.md`](../industry-playbook/01-experiments-first.md) |
 | **3** | [Difference-in-Differences](./03-difference-in-differences/) | Difference twice to kill fixed confounders and common trends. The estimate is causal only under **parallel trends — untestable by construction** — and the danger is timing variation, not sample size. | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
 | **4** | [Regression Discontinuity](./04-regression-discontinuity/) | A business rule's arbitrary cutoff is a natural experiment: units just above vs. just below are as-good-as-randomized. Cleanest identification in observational work, **narrowest estimand** (a LATE at the cutoff), and it dies on one thing — **manipulation of the running variable.** | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
+| **5** | [Instrumental Variables](./05-instrumental-variables/) | When treatment is confounded and no design exists, find a lever that moves treatment without touching the confounder. IV **swaps** unconfoundedness for the **untestable exclusion restriction** — and dies on weak instruments or backdoor channels. Estimand: LATE / ACR for compliers. | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
 
 ### Lecture 2 chapters
 
@@ -61,6 +62,14 @@ the playbook chapter and skill reference that operationalize it.
 | 4.2 | [Fuzzy RDD](./04-regression-discontinuity/4.2-fuzzy-rdd.md) | The cutoff as an instrument; a local Wald/LATE for compliers. The 10% shadowban effect is for the *borderline* users only — not always-takers or never-takers. |
 | 4.3 | [Regression Kink Design](./04-regression-discontinuity/4.3-regression-kink.md) | The policy changes *slope*, not level. Effect = ratio of slope-changes (α₂/γ₂); verified 0.79 vs true 0.8. |
 | 4.4 | [Geographic RD](./04-regression-discontinuity/4.4-geographic-rd.md) | A border is the cutoff; distance is the running variable. The placebo-border test separates policy-gaming from natural spatial clustering. |
+
+### Lecture 5 chapters
+
+| # | Chapter | Core idea |
+| --- | --- | --- |
+| 5.1 | [Standard 2SLS](./05-instrumental-variables/5.1-standard-2sls.md) | 2SLS = reduced form ÷ first stage (verified: OLS biased 2.84, IV recovers 2.01). Weak instruments bias you back toward OLS *and* explode SEs. |
+| 5.2 | [Shift-Share / Bartik](./05-instrumental-variables/5.2-shift-share-bartik.md) | Shares × shocks. Identification is share-based (GPSS) *or* shock-based (BHJ) — you must pick. Shopify/iOS 14.5 → shock-based is the only defensible one. |
+| 5.3 | [Judge / Examiner IV](./05-instrumental-variables/5.3-judge-examiner-iv.md) | Leave-one-out leniency; many-dummy 2SLS biased 19% toward OLS, LOO fixes it. The Ramp probes + a full review of the collection-agent IV (an ACR, with a within-call exclusion threat). |
 
 *More lectures to come — the series is written topic by topic.*
 
