@@ -32,7 +32,7 @@ for you.** Five parts, from most-designed to least.
 | Part | Theme | Lectures |
 | --- | --- | --- |
 | **I** | Foundations & design-based ID *(the world randomizes something)* | 1 Foundations · 2 Experimentation · 3 DiD · 4 RDD · 5 IV ✅ |
-| **II** | Comparative-case & panel *(build the counterfactual)* | **6 Synthetic Control ✅** · 7 Panel Data *(planned)* |
+| **II** | Comparative-case & panel *(build the counterfactual)* | **6 Synthetic Control ✅** · **7 Panel Data ✅** |
 | **III** | Selection on observables & ML *(assume you measured the confounders)* | **8 Selection on Observables ✅** · **9 Double Machine Learning ✅** · **10 Heterogeneity & Uplift ✅** |
 | **IV** | Defending & interrogating estimates | **11 Sensitivity & Partial ID ✅** · **12 Mediation ✅** · 13 DAGs & Discovery *(planned)* |
 | **V** | Structural | 14 Structural Estimation *(planned)* |
@@ -49,6 +49,7 @@ for you.** Five parts, from most-designed to least.
 | **4** | [Regression Discontinuity](./04-regression-discontinuity/) | A business rule's arbitrary cutoff is a natural experiment: units just above vs. just below are as-good-as-randomized. Cleanest identification in observational work, **narrowest estimand** (a LATE at the cutoff), and it dies on one thing — **manipulation of the running variable.** | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
 | **5** | [Instrumental Variables](./05-instrumental-variables/) | When treatment is confounded and no design exists, find a lever that moves treatment without touching the confounder. IV **swaps** unconfoundedness for the **untestable exclusion restriction** — and dies on weak instruments or backdoor channels. Estimand: LATE / ACR for compliers. | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
 | **6** | [Synthetic Control & Counterfactual Estimators](./06-synthetic-control/) | One or a few treated units, non-parallel controls: **build** the counterfactual from a weighted blend of donors. Convex hull is a feature until it's a wall — then escalate to SDID (subtract the level) or matrix completion (impute messy rollouts). Inference is by **permutation, not standard errors.** | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
+| **7** | [Panel Data Methods](./07-panel-data/) | The same units over time: each unit is its own control. The **within-transformation** differences away time-invariant confounders for free. Fixed effects → Mundlak (keep static vars, same β) → Arellano-Bond (fix the lagged-Y Nickell bias) → Empirical Bayes (adaptive shrinkage). | [`03-observational.md`](../industry-playbook/03-observational.md) |
 | **8** | [Selection on Observables](./08-selection-on-observables/) | No design at all — assume you measured every confounder, then match or weight. The pivot to the observational world. **PSM solves the curse of dimensionality, not selection bias**; overlap is where it dies; **doubly-robust (AIPW) is the default** — unbiased if *either* model is right. | [`03-observational.md`](../industry-playbook/03-observational.md) |
 | **9** | [Double Machine Learning](./09-double-machine-learning/) | High-dimensional, nonlinear confounders: use ML for the nuisances, OLS for the effect. **FWL + flexible ML + cross-fitting.** Two enemies (regularization bias, overfitting bias), two defenses (Neyman orthogonality, cross-fitting). The IV form merges with Judge-IV (Lecture 5). | [`03-observational.md`](../industry-playbook/03-observational.md) |
 | **10** | [Heterogeneous Effects & Uplift](./10-heterogeneity-and-uplift/) | Stop chasing the ATE — ask *whom to treat.* CATE via causal forests, the **uplift quadrant** (target persuadables, not sure things), Qini evaluation, and distilling scores into deployable IF/ELSE **policy** rules. | [`04-heterogeneity-and-targeting.md`](../industry-playbook/04-heterogeneity-and-targeting.md) |
@@ -100,6 +101,15 @@ for you.** Five parts, from most-designed to least.
 | 6.1 | [Classic Synthetic Control](./06-synthetic-control/6.1-classic-scm.md) | Convex-hull weights, permutation inference (rank by post/pre RMSPE ratio), leave-one-out robustness. Verified: recovers 0.59 Boston + 0.41 Austin, ATT 15.3 vs. true 15. |
 | 6.2 | [Augmented SCM & Synthetic DiD](./06-synthetic-control/6.2-ascm-and-sdid.md) | When the treated unit is a level outlier, classic SCM flatlines (17,184 for a true 500). SDID absorbs the gap with a fixed effect (recovers 497); ASCM extrapolates with ridge — riskier. |
 | 6.3 | [Matrix Completion](./06-synthetic-control/6.3-matrix-completion.md) | Causal inference as a missing-data problem: delete treated cells, impute via low-rank. Handles staggered + toggling + many treated units; verified 2.05 vs true 2.0. |
+
+### Lecture 7 chapters
+
+| # | Chapter | Core idea |
+| --- | --- | --- |
+| 7.1 | [Fixed Effects](./07-panel-data/7.1-fixed-effects.md) | The within-transformation differences away time-invariant confounders (verified: pooled OLS 2.45 → FE 1.50, true 1.5). Only *stable* confounders; cluster SEs at the unit; strict exogeneity is the pitfall. |
+| 7.2 | [Correlated Random Effects (Mundlak)](./07-panel-data/7.2-correlated-random-effects.md) | Add each unit's group mean X̄ᵢ → recover FE's β **exactly** (verified to 1e-15) while keeping coefficients on static vars (gender, OS) that FE destroys. |
+| 7.3 | [Dynamic Panel GMM (Arellano-Bond)](./07-panel-data/7.3-dynamic-panel-gmm.md) | A lagged Y breaks FE (Nickell bias: ρ 0.31 vs true 0.6). First-difference + deep-lag instruments recovers 0.61. Short panels only; check AR(2) + Hansen. |
+| 7.4 | [Empirical Bayes / Partial Pooling](./07-panel-data/7.4-empirical-bayes.md) | Adaptive shrinkage by each group's own nⱼ (verified: Bob's Bakery 50% → 1.74%, ~4× lower MSE). Beats Ridge's global λ; the posterior feeds Thompson Sampling. |
 
 ### Lecture 8 chapters
 
