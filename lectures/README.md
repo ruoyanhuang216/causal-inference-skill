@@ -33,7 +33,7 @@ for you.** Five parts, from most-designed to least.
 | --- | --- | --- |
 | **I** | Foundations & design-based ID *(the world randomizes something)* | 1 Foundations · 2 Experimentation · 3 DiD · 4 RDD · 5 IV ✅ |
 | **II** | Comparative-case & panel *(build the counterfactual)* | **6 Synthetic Control ✅** · 7 Panel Data *(planned)* |
-| **III** | Selection on observables & ML *(assume you measured the confounders)* | **8 Selection on Observables ✅** · 9 ML for Average Effects · 10 Heterogeneity & Uplift *(planned)* |
+| **III** | Selection on observables & ML *(assume you measured the confounders)* | **8 Selection on Observables ✅** · **9 Double Machine Learning ✅** · 10 Heterogeneity & Uplift *(planned)* |
 | **IV** | Defending & interrogating estimates | 11 Sensitivity & Partial ID · 12 Mediation · 13 DAGs & Discovery *(planned)* |
 | **V** | Structural | 14 Structural Estimation *(planned)* |
 
@@ -50,6 +50,7 @@ for you.** Five parts, from most-designed to least.
 | **5** | [Instrumental Variables](./05-instrumental-variables/) | When treatment is confounded and no design exists, find a lever that moves treatment without touching the confounder. IV **swaps** unconfoundedness for the **untestable exclusion restriction** — and dies on weak instruments or backdoor channels. Estimand: LATE / ACR for compliers. | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
 | **6** | [Synthetic Control & Counterfactual Estimators](./06-synthetic-control/) | One or a few treated units, non-parallel controls: **build** the counterfactual from a weighted blend of donors. Convex hull is a feature until it's a wall — then escalate to SDID (subtract the level) or matrix completion (impute messy rollouts). Inference is by **permutation, not standard errors.** | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
 | **8** | [Selection on Observables](./08-selection-on-observables/) | No design at all — assume you measured every confounder, then match or weight. The pivot to the observational world. **PSM solves the curse of dimensionality, not selection bias**; overlap is where it dies; **doubly-robust (AIPW) is the default** — unbiased if *either* model is right. | [`03-observational.md`](../industry-playbook/03-observational.md) |
+| **9** | [Double Machine Learning](./09-double-machine-learning/) | High-dimensional, nonlinear confounders: use ML for the nuisances, OLS for the effect. **FWL + flexible ML + cross-fitting.** Two enemies (regularization bias, overfitting bias), two defenses (Neyman orthogonality, cross-fitting). The IV form merges with Judge-IV (Lecture 5). | [`03-observational.md`](../industry-playbook/03-observational.md) |
 
 ### Lecture 2 chapters
 
@@ -105,6 +106,14 @@ for you.** Five parts, from most-designed to least.
 | 8.3 | [Inverse Probability Weighting](./08-selection-on-observables/8.3-inverse-probability-weighting.md) | Reweight into a pseudo-population. Treated weight = 1 for ATT, 1/e(X) for ATE. Extreme propensities explode the variance (verified 54×); **overlap weights** (1−e, e) are bounded in [0,1] and target the **ATO** — the persuadable middle (ATO 2.89 ≠ ATE 2.00). |
 | 8.4 | [Doubly Robust / AIPW](./08-selection-on-observables/8.4-doubly-robust-aipw.md) | Two chances to be right — verified: unbiased if *either* model correct (bias +0.01 / +0.00), biased only if both wrong (+0.36). Weights hit residuals not raw outcomes (DoorDash: 2,000 vs 50,000). |
 | 8.5 | [Advanced Matching & Weighting](./08-selection-on-observables/8.5-advanced-matching-and-weighting.md) | Beyond PSM (King-Nielsen). Entropy balancing = exact moment balance by construction (verified ~1e-6), for pipelines. CEM = stakeholder-verifiable pairs but prunes hard (500 survive at 4 covariates, 14% at 8). Mahalanobis for ≤8 continuous. |
+
+### Lecture 9 chapters
+
+| # | Chapter | Core idea |
+| --- | --- | --- |
+| 9.1 | [The DML Core](./09-double-machine-learning/9.1-dml-core.md) | FWL + flexible ML + cross-fitting. The junior-skips-cross-fitting probe: residuals shrink 63% (verified), but the SE *cancels* — the real damage is bias, not SE deflation (a correction to the common answer). |
+| 9.2 | [Applied DML & the Two Gotchas](./09-double-machine-learning/9.2-applied-dml.md) | Enterprise-SaaS walkthrough. Gotcha 1: nuisance feature importance ≠ causal. Gotcha 2: a perfect propensity (AUC→1) makes D̃→0 and the estimate 0/0 — overlap still bites. |
+| 9.3 | [DML-IV (PLIV)](./09-double-machine-learning/9.3-dml-iv.md) | Merges Judge-IV with DML for the collection-agent design. Setup 1 (DML for the ITT) vs Setup 2 (three-model residual-2SLS). Use the continuous LOO instrument, not 50 agent dummies. |
 
 *More lectures to come — the series is written topic by topic.*
 
