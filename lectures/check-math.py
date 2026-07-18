@@ -20,7 +20,7 @@ import sys
 # Match currency positively rather than math negatively: bare variables
 # like `$i$` carry no LaTeX markup, so "has no backslash" flags everything.
 CURRENCY_START = re.compile(r"^\d[\d,]*(\.\d+)?\s*[kKMB]?\b")
-LATEX_MARKER = re.compile(r"[\\^_{}/=]")  # `/` `=` mean math: `$1/J$`, `$Z=0$`
+LATEX_MARKER = re.compile(r"[\\^_{}/=<>()]")  # these mean math: `$1/J$`, `$Z=0$`, `$0 < e(X) < 1$`
 PURE_NUMBER = re.compile(r"^\d+$")  # `$2$` is legitimate math
 
 

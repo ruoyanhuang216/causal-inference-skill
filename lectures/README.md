@@ -33,7 +33,7 @@ for you.** Five parts, from most-designed to least.
 | --- | --- | --- |
 | **I** | Foundations & design-based ID *(the world randomizes something)* | 1 Foundations · 2 Experimentation · 3 DiD · 4 RDD · 5 IV ✅ |
 | **II** | Comparative-case & panel *(build the counterfactual)* | **6 Synthetic Control ✅** · 7 Panel Data *(planned)* |
-| **III** | Selection on observables & ML *(assume you measured the confounders)* | 8 Selection on Observables · 9 ML for Average Effects · 10 Heterogeneity & Uplift *(planned)* |
+| **III** | Selection on observables & ML *(assume you measured the confounders)* | **8 Selection on Observables ✅** · 9 ML for Average Effects · 10 Heterogeneity & Uplift *(planned)* |
 | **IV** | Defending & interrogating estimates | 11 Sensitivity & Partial ID · 12 Mediation · 13 DAGs & Discovery *(planned)* |
 | **V** | Structural | 14 Structural Estimation *(planned)* |
 
@@ -49,6 +49,7 @@ for you.** Five parts, from most-designed to least.
 | **4** | [Regression Discontinuity](./04-regression-discontinuity/) | A business rule's arbitrary cutoff is a natural experiment: units just above vs. just below are as-good-as-randomized. Cleanest identification in observational work, **narrowest estimand** (a LATE at the cutoff), and it dies on one thing — **manipulation of the running variable.** | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
 | **5** | [Instrumental Variables](./05-instrumental-variables/) | When treatment is confounded and no design exists, find a lever that moves treatment without touching the confounder. IV **swaps** unconfoundedness for the **untestable exclusion restriction** — and dies on weak instruments or backdoor channels. Estimand: LATE / ACR for compliers. | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
 | **6** | [Synthetic Control & Counterfactual Estimators](./06-synthetic-control/) | One or a few treated units, non-parallel controls: **build** the counterfactual from a weighted blend of donors. Convex hull is a feature until it's a wall — then escalate to SDID (subtract the level) or matrix completion (impute messy rollouts). Inference is by **permutation, not standard errors.** | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
+| **8** | [Selection on Observables](./08-selection-on-observables/) | No design at all — assume you measured every confounder, then match or weight. The pivot to the observational world. **PSM solves the curse of dimensionality, not selection bias**; overlap is where it dies; **doubly-robust (AIPW) is the default** — unbiased if *either* model is right. | [`03-observational.md`](../industry-playbook/03-observational.md) |
 
 ### Lecture 2 chapters
 
@@ -94,6 +95,15 @@ for you.** Five parts, from most-designed to least.
 | 6.1 | [Classic Synthetic Control](./06-synthetic-control/6.1-classic-scm.md) | Convex-hull weights, permutation inference (rank by post/pre RMSPE ratio), leave-one-out robustness. Verified: recovers 0.59 Boston + 0.41 Austin, ATT 15.3 vs. true 15. |
 | 6.2 | [Augmented SCM & Synthetic DiD](./06-synthetic-control/6.2-ascm-and-sdid.md) | When the treated unit is a level outlier, classic SCM flatlines (17,184 for a true 500). SDID absorbs the gap with a fixed effect (recovers 497); ASCM extrapolates with ridge — riskier. |
 | 6.3 | [Matrix Completion](./06-synthetic-control/6.3-matrix-completion.md) | Causal inference as a missing-data problem: delete treated cells, impute via low-rank. Handles staggered + toggling + many treated units; verified 2.05 vs true 2.0. |
+
+### Lecture 8 chapters
+
+| # | Chapter | Core idea |
+| --- | --- | --- |
+| 8.1 | [Propensity Score & Unconfoundedness](./08-selection-on-observables/8.1-propensity-and-unconfoundedness.md) | Rosenbaum-Rubin collapses 50 covariates to one score. The golden rule: PSM solves the curse of dimensionality, *not* selection bias. High AUC ≠ no confounders; "too high" kills overlap. The Spotify opt-in trap. |
+| 8.2 | [Propensity Score Matching](./08-selection-on-observables/8.2-propensity-score-matching.md) | End-to-end DoorDash: estimate → overlap trim → caliper match → Love plot (SMD < 0.1) → ATT → Rosenbaum Γ. Matching → ATT is a difference of matched means. |
+| 8.3 | [Inverse Probability Weighting](./08-selection-on-observables/8.3-inverse-probability-weighting.md) | Reweight into a pseudo-population. Treated weight = 1 for ATT (they *are* the target), 1/e(X) for ATE. Extreme propensities explode the variance. |
+| 8.4 | [Doubly Robust / AIPW](./08-selection-on-observables/8.4-doubly-robust-aipw.md) | Two chances to be right — verified: unbiased if *either* model correct (bias +0.01 / +0.00), biased only if both wrong (+0.36). Weights hit residuals not raw outcomes (DoorDash: 2,000 vs 50,000). |
 
 *More lectures to come — the series is written topic by topic.*
 
