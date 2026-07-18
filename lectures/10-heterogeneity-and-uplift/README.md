@@ -80,7 +80,7 @@ to.
 | **10.2** | [Uplift & Targeting](./10.2-uplift-and-targeting.md) | The quadrant, the sure-things trap (the telecom probe), ROI-threshold targeting, Qini / AUUC evaluation | You have a budget and must choose whom to treat |
 | **10.3** | [Policy Learning](./10.3-policy-learning.md) | From black-box scores to interpretable rules: single honest tree vs. surrogate policy tree; deploying an IF/ELSE | The business needs a rule, not a model |
 | **10.4** | [Meta-Learners for CATE](./10.4-meta-learners.md) | Wrap any predictor into a CATE estimator: S / T / X / R / DR-learners, the selection matrix, and the two silent failures (extrapolation, unobserved confounding) | You want CATE without committing to trees |
-| **10.4** | [Meta-Learners](./10.4-meta-learners.md) | S/T/X/R/DR — architectural recipes turning any ML into a CATE estimator; the two failure modes (extrapolation, unobserved confounding); the selection matrix | You want to use XGBoost/LightGBM for uplift |
+| **10.5** | [BART & Bayesian Causal Forests](./10.5-bart-and-bcf.md) | The Bayesian S-learner: MCMC posteriors give credible intervals for free, but inherit S-learner shrinkage; BCF isolates the τ-forest and absorbs targeted selection via the propensity. Frequentist online, BCF offline. | You need uncertainty on the CATE, or have a small/high-stakes sample |
 
 ---
 

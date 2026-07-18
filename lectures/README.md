@@ -124,7 +124,7 @@ for you.** Five parts, from most-designed to least.
 | 10.2 | [Uplift & Targeting](./10-heterogeneity-and-uplift/10.2-uplift-and-targeting.md) | The sure-things trap: ranking by predicted *outcome* generates ~0 causal lift (verified −0.005), ranking by *CATE* generates +0.535. Target persuadables; call iff τ̂ > cost; evaluate with Qini/AUUC. |
 | 10.3 | [Policy Learning](./10-heterogeneity-and-uplift/10.3-policy-learning.md) | Distill the black-box forest into a shallow **surrogate policy tree** → a deployable IF/ELSE. Verified: the surrogate recovers the true persuadable rule from the CATE scores alone. |
 | 10.4 | [Meta-Learners for CATE](./10-heterogeneity-and-uplift/10.4-meta-learners.md) | S/T/X/R/DR-learners + the selection matrix. Verified: S-learner prunes D (0.024 vs true 0.50); at 1% treatment the X-learner cuts CATE error 73% by borrowing the control baseline. |
-| 10.4 | [Meta-Learners](./10-heterogeneity-and-uplift/10.4-meta-learners.md) | S/T/X/R/DR recipes turning any ML into a CATE estimator. Verified: S-learner shrinks a 0.30 effect to 0.005 (regularization bias); under 1% treatment the X-learner has **31× lower** CATE error than the T-learner. Plus the two silent failures — extrapolation and unobserved confounding — and the selection matrix. |
+| 10.5 | [BART & Bayesian Causal Forests](./10-heterogeneity-and-uplift/10.5-bart-and-bcf.md) | BART = the Bayesian S-learner: free posterior credible intervals via MCMC, but it *inherits* the S-learner shrinkage. BCF isolates a τ-forest and feeds the propensity into the baseline to absorb targeted selection. Frequentist online (2 ms), BCF offline (MCMC too slow to serve). |
 
 *More lectures to come — the series is written topic by topic.*
 
