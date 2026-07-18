@@ -104,6 +104,7 @@ for you.** Five parts, from most-designed to least.
 | 8.2 | [Propensity Score Matching](./08-selection-on-observables/8.2-propensity-score-matching.md) | End-to-end DoorDash: estimate → overlap trim → caliper match → Love plot (SMD < 0.1) → ATT → Rosenbaum Γ. Matching → ATT is a difference of matched means. |
 | 8.3 | [Inverse Probability Weighting](./08-selection-on-observables/8.3-inverse-probability-weighting.md) | Reweight into a pseudo-population. Treated weight = 1 for ATT (they *are* the target), 1/e(X) for ATE. Extreme propensities explode the variance. |
 | 8.4 | [Doubly Robust / AIPW](./08-selection-on-observables/8.4-doubly-robust-aipw.md) | Two chances to be right — verified: unbiased if *either* model correct (bias +0.01 / +0.00), biased only if both wrong (+0.36). Weights hit residuals not raw outcomes (DoorDash: 2,000 vs 50,000). |
+| 8.5 | [Advanced Matching & Weighting](./08-selection-on-observables/8.5-advanced-matching-and-weighting.md) | Beyond PSM (King-Nielsen). Entropy balancing = exact moment balance by construction (verified ~1e-6), for pipelines. CEM = stakeholder-verifiable pairs but prunes hard (500 survive at 4 covariates, 14% at 8). Mahalanobis for ≤8 continuous. |
 
 *More lectures to come — the series is written topic by topic.*
 

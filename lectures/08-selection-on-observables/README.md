@@ -83,6 +83,7 @@ Four chapters, one workflow: estimate the propensity, then either **match** or
 | **8.2** | [Propensity Score Matching](./8.2-propensity-score-matching.md) | End-to-end (the DoorDash promo): estimation → overlap → caliper matching → Love plot → ATT → Rosenbaum bounds | ATT |
 | **8.3** | [Inverse Probability Weighting](./8.3-inverse-probability-weighting.md) | The pseudo-population; ATE vs. ATT weights; unit-level math; the variance danger; stabilized weights | ATE / ATT |
 | **8.4** | [Doubly Robust / AIPW](./8.4-doubly-robust-aipw.md) | Two chances to be right (verified); semiparametric efficiency; T-learner vs. S-learner | ATE (default) |
+| **8.5** | [Advanced Matching & Weighting](./8.5-advanced-matching-and-weighting.md) | Beyond PSM (King-Nielsen critique): CEM, Mahalanobis distance, entropy balancing; which constraint picks which method | ATT / ATE |
 
 ---
 
