@@ -35,7 +35,7 @@ for you.** Five parts, from most-designed to least.
 | **II** | Comparative-case & panel *(build the counterfactual)* | **6 Synthetic Control ✅** · **7 Panel Data ✅** |
 | **III** | Selection on observables & ML *(assume you measured the confounders)* | **8 Selection on Observables ✅** · **9 Double Machine Learning ✅** · **10 Heterogeneity & Uplift ✅** |
 | **IV** | Defending & interrogating estimates | **11 Sensitivity & Partial ID ✅** · **12 Mediation ✅** · 13 DAGs & Discovery *(planned)* |
-| **V** | Structural | 14 Structural Estimation *(planned)* |
+| **V** | Structural | **14 Structural Estimation ✅** |
 
 ---
 
@@ -55,6 +55,7 @@ for you.** Five parts, from most-designed to least.
 | **10** | [Heterogeneous Effects & Uplift](./10-heterogeneity-and-uplift/) | Stop chasing the ATE — ask *whom to treat.* CATE via causal forests, the **uplift quadrant** (target persuadables, not sure things), Qini evaluation, and distilling scores into deployable IF/ELSE **policy** rules. | [`04-heterogeneity-and-targeting.md`](../industry-playbook/04-heterogeneity-and-targeting.md) |
 | **11** | [Sensitivity & Partial Identification](./11-sensitivity-and-partial-id/) *(overview)* | Every point estimate rests on an untestable assumption. When it breaks, **bound** the effect (Manski, Lee) or **stress-test** it (Oster's δ, Cinelli-Hazlett RV, E-value). Shifts the debate from "did you control for X?" to "*is X really that strong?*" | [`06-defending-estimates.md`](../industry-playbook/06-defending-estimates.md) |
 | **12** | [Causal Mediation](./12-causal-mediation/) *(overview)* | Not *did* D affect Y, but *why* — decompose into direct (NDE) and indirect-through-the-mediator (NIE) effects. Treacherous: you randomized D but **not the mediator M**, so identifying the NIE needs an untestable no-hidden-M-Y-confounder assumption. Never Baron-Kenny. | [`00-foundations.md`](../industry-playbook/00-foundations.md) |
+| **14** | [Structural Estimation](./14-structural-estimation/) | Estimate the *economic model's parameters*, then simulate policies you've **never observed** — a merger, a new product, a price outside the historical range. Strong assumptions bought for extrapolation no experiment can give. **BLP** demand (GMM-IV + share inversion) → back out marginal costs → **merger simulation**. | [`05-structural.md`](../industry-playbook/05-structural.md) |
 
 ### Lecture 2 chapters
 
@@ -141,6 +142,14 @@ for you.** Five parts, from most-designed to least.
 | 10.3 | [Policy Learning](./10-heterogeneity-and-uplift/10.3-policy-learning.md) | Distill the black-box forest into a shallow **surrogate policy tree** → a deployable IF/ELSE. Verified: the surrogate recovers the true persuadable rule from the CATE scores alone. |
 | 10.4 | [Meta-Learners for CATE](./10-heterogeneity-and-uplift/10.4-meta-learners.md) | S/T/X/R/DR-learners + the selection matrix. Verified: S-learner prunes D (0.024 vs true 0.50); at 1% treatment the X-learner cuts CATE error 73% by borrowing the control baseline. |
 | 10.5 | [BART & Bayesian Causal Forests](./10-heterogeneity-and-uplift/10.5-bart-and-bcf.md) | BART = the Bayesian S-learner: free posterior credible intervals via MCMC, but it *inherits* the S-learner shrinkage. BCF isolates a τ-forest and feeds the propensity into the baseline to absorb targeted selection. Frequentist online (2 ms), BCF offline (MCMC too slow to serve). |
+
+### Lecture 14 chapters
+
+| # | Chapter | Core idea |
+| --- | --- | --- |
+| 14.1 | [Discrete Choice & BLP Demand](./14-structural-estimation/14.1-discrete-choice-and-blp.md) | Logit's IIA (verified: removing a product leaves survivors' share ratio unchanged) → mixed logit → **BLP**: invert shares to mean utility via the contraction mapping (verified to 4e-11), then GMM-IV for the endogenous price. |
+| 14.2 | [Supply Side & Merger Simulation](./14-structural-estimation/14.2-supply-and-mergers.md) | Nash-Bertrand FOCs back out marginal costs from prices + demand (verified). Then change the ownership matrix and re-solve → post-merger prices. |
+| 14.3 | [Dynamic, Search & Learning](./14-structural-estimation/14.3-dynamic-search-learning.md) *(survey)* | Rust NFXP vs. Hotz-Miller CCP vs. MPEC; dynamic games; Weitzman search; Erdem-Keane learning. Counterfactual machines for forward-looking agents. |
 
 *More lectures to come — the series is written topic by topic.*
 
