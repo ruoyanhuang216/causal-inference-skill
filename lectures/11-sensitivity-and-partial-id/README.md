@@ -27,7 +27,8 @@ under what you *do* know.**
 If 20% of users dropped out with unknown outcomes, compute the ATE **twice**:
 once imputing the *best possible* outcome for all missing, once the *worst
 possible*. The truth must lie between. With no assumptions the bounds are
-usually **so wide they're useless for a decision** (e.g. $[-\$20, +\$80]$) — but
+usually **so wide they're useless for a decision** (e.g. a range like −\$20 to
++\$80) — but
 they are the undeniable baseline of what the data alone can prove. Manski's
 point: everything narrower than this requires an assumption you should state out
 loud.
