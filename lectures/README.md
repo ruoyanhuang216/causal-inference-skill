@@ -9,6 +9,10 @@ Each lecture derives the identification argument rather than asserting
 it, works one realistic example end-to-end with numbers, and closes with
 the misreadings that survive into production.
 
+> **🧭 Not sure which method fits your problem? Start with
+> [`method-selection.md`](./method-selection.md)** — a master decision tree and
+> "what the stakeholder says → which lecture" lookup across the whole series.
+
 ---
 
 ## The three layers of this repo
