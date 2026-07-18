@@ -24,6 +24,21 @@ the playbook chapter and skill reference that operationalize it.
 
 ---
 
+## Series structure
+
+The series moves along one axis: **how much the world does the identification
+for you.** Five parts, from most-designed to least.
+
+| Part | Theme | Lectures |
+| --- | --- | --- |
+| **I** | Foundations & design-based ID *(the world randomizes something)* | 1 Foundations · 2 Experimentation · 3 DiD · 4 RDD · 5 IV ✅ |
+| **II** | Comparative-case & panel *(build the counterfactual)* | **6 Synthetic Control ✅** · 7 Panel Data *(planned)* |
+| **III** | Selection on observables & ML *(assume you measured the confounders)* | 8 Selection on Observables · 9 ML for Average Effects · 10 Heterogeneity & Uplift *(planned)* |
+| **IV** | Defending & interrogating estimates | 11 Sensitivity & Partial ID · 12 Mediation · 13 DAGs & Discovery *(planned)* |
+| **V** | Structural | 14 Structural Estimation *(planned)* |
+
+---
+
 ## Lectures
 
 | # | Lecture | Core idea | Deepens |
@@ -33,6 +48,7 @@ the playbook chapter and skill reference that operationalize it.
 | **3** | [Difference-in-Differences](./03-difference-in-differences/) | Difference twice to kill fixed confounders and common trends. The estimate is causal only under **parallel trends — untestable by construction** — and the danger is timing variation, not sample size. | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
 | **4** | [Regression Discontinuity](./04-regression-discontinuity/) | A business rule's arbitrary cutoff is a natural experiment: units just above vs. just below are as-good-as-randomized. Cleanest identification in observational work, **narrowest estimand** (a LATE at the cutoff), and it dies on one thing — **manipulation of the running variable.** | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
 | **5** | [Instrumental Variables](./05-instrumental-variables/) | When treatment is confounded and no design exists, find a lever that moves treatment without touching the confounder. IV **swaps** unconfoundedness for the **untestable exclusion restriction** — and dies on weak instruments or backdoor channels. Estimand: LATE / ACR for compliers. | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
+| **6** | [Synthetic Control & Counterfactual Estimators](./06-synthetic-control/) | One or a few treated units, non-parallel controls: **build** the counterfactual from a weighted blend of donors. Convex hull is a feature until it's a wall — then escalate to SDID (subtract the level) or matrix completion (impute messy rollouts). Inference is by **permutation, not standard errors.** | [`02-quasi-experimental.md`](../industry-playbook/02-quasi-experimental.md) |
 
 ### Lecture 2 chapters
 
@@ -50,7 +66,7 @@ the playbook chapter and skill reference that operationalize it.
 | # | Chapter | Core idea |
 | --- | --- | --- |
 | 3.1 | [Classic 2×2 & Geo-Controls](./03-difference-in-differences/3.1-classic-did-and-geo-controls.md) | δ is the interaction coefficient; a 2-period design has *zero* testable pre-trends, so the Miami tourist trap needs a historical placebo, not an event study. |
-| 3.2 | [Synthetic Control](./03-difference-in-differences/3.2-synthetic-control.md) | Weight the donor pool to *force* the pre-trend match. A real fit recovers 0.59 Boston + 0.41 Austin and an ATT of 15.3 vs. a true 15. |
+| 3.2 | [Synthetic Control](./03-difference-in-differences/3.2-synthetic-control.md) *(bridge)* | The weighted-control idea in one screen; full treatment in [Lecture 6](./06-synthetic-control/). |
 | 3.3 | [Staggered DiD: The TWFE Trap and Its Fixes](./03-difference-in-differences/3.3-staggered-did.md) | TWFE uses already-treated units as controls (a true +3.98 effect reports as −1.24). Then the fix: every modern estimator implements "never control on the already-treated," and CS assumes *absorbing* treatment — for a toggle-able feature you pivot to de Chaisemartin-D'Haultfœuille. |
 | 3.4 | [Triple Differences](./03-difference-in-differences/3.4-triple-differences.md) | A second control dimension differences out a shock. Verified: a naive DiD reports +28 for a true +8; DDD recovers +8.3. |
 
@@ -70,6 +86,14 @@ the playbook chapter and skill reference that operationalize it.
 | 5.1 | [Standard 2SLS](./05-instrumental-variables/5.1-standard-2sls.md) | 2SLS = reduced form ÷ first stage (verified: OLS biased 2.84, IV recovers 2.01). Weak instruments bias you back toward OLS *and* explode SEs. |
 | 5.2 | [Shift-Share / Bartik](./05-instrumental-variables/5.2-shift-share-bartik.md) | Shares × shocks. Identification is share-based (GPSS) *or* shock-based (BHJ) — you must pick. Shopify/iOS 14.5 → shock-based is the only defensible one. |
 | 5.3 | [Judge / Examiner IV](./05-instrumental-variables/5.3-judge-examiner-iv.md) | Leave-one-out leniency; many-dummy 2SLS biased 19% toward OLS, LOO fixes it. The Ramp probes + a full review of the collection-agent IV (an ACR, with a within-call exclusion threat). |
+
+### Lecture 6 chapters
+
+| # | Chapter | Core idea |
+| --- | --- | --- |
+| 6.1 | [Classic Synthetic Control](./06-synthetic-control/6.1-classic-scm.md) | Convex-hull weights, permutation inference (rank by post/pre RMSPE ratio), leave-one-out robustness. Verified: recovers 0.59 Boston + 0.41 Austin, ATT 15.3 vs. true 15. |
+| 6.2 | [Augmented SCM & Synthetic DiD](./06-synthetic-control/6.2-ascm-and-sdid.md) | When the treated unit is a level outlier, classic SCM flatlines (17,184 for a true 500). SDID absorbs the gap with a fixed effect (recovers 497); ASCM extrapolates with ridge — riskier. |
+| 6.3 | [Matrix Completion](./06-synthetic-control/6.3-matrix-completion.md) | Causal inference as a missing-data problem: delete treated cells, impute via low-rank. Handles staggered + toggling + many treated units; verified 2.05 vs true 2.0. |
 
 *More lectures to come — the series is written topic by topic.*
 
