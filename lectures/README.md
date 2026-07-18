@@ -34,7 +34,7 @@ for you.** Five parts, from most-designed to least.
 | **I** | Foundations & design-based ID *(the world randomizes something)* | 1 Foundations · 2 Experimentation · 3 DiD · 4 RDD · 5 IV ✅ |
 | **II** | Comparative-case & panel *(build the counterfactual)* | **6 Synthetic Control ✅** · 7 Panel Data *(planned)* |
 | **III** | Selection on observables & ML *(assume you measured the confounders)* | **8 Selection on Observables ✅** · **9 Double Machine Learning ✅** · **10 Heterogeneity & Uplift ✅** |
-| **IV** | Defending & interrogating estimates | 11 Sensitivity & Partial ID · 12 Mediation · 13 DAGs & Discovery *(planned)* |
+| **IV** | Defending & interrogating estimates | **11 Sensitivity & Partial ID ✅** · **12 Mediation ✅** · 13 DAGs & Discovery *(planned)* |
 | **V** | Structural | 14 Structural Estimation *(planned)* |
 
 ---
@@ -52,6 +52,8 @@ for you.** Five parts, from most-designed to least.
 | **8** | [Selection on Observables](./08-selection-on-observables/) | No design at all — assume you measured every confounder, then match or weight. The pivot to the observational world. **PSM solves the curse of dimensionality, not selection bias**; overlap is where it dies; **doubly-robust (AIPW) is the default** — unbiased if *either* model is right. | [`03-observational.md`](../industry-playbook/03-observational.md) |
 | **9** | [Double Machine Learning](./09-double-machine-learning/) | High-dimensional, nonlinear confounders: use ML for the nuisances, OLS for the effect. **FWL + flexible ML + cross-fitting.** Two enemies (regularization bias, overfitting bias), two defenses (Neyman orthogonality, cross-fitting). The IV form merges with Judge-IV (Lecture 5). | [`03-observational.md`](../industry-playbook/03-observational.md) |
 | **10** | [Heterogeneous Effects & Uplift](./10-heterogeneity-and-uplift/) | Stop chasing the ATE — ask *whom to treat.* CATE via causal forests, the **uplift quadrant** (target persuadables, not sure things), Qini evaluation, and distilling scores into deployable IF/ELSE **policy** rules. | [`04-heterogeneity-and-targeting.md`](../industry-playbook/04-heterogeneity-and-targeting.md) |
+| **11** | [Sensitivity & Partial Identification](./11-sensitivity-and-partial-id/) *(overview)* | Every point estimate rests on an untestable assumption. When it breaks, **bound** the effect (Manski, Lee) or **stress-test** it (Oster's δ, Cinelli-Hazlett RV, E-value). Shifts the debate from "did you control for X?" to "*is X really that strong?*" | [`06-defending-estimates.md`](../industry-playbook/06-defending-estimates.md) |
+| **12** | [Causal Mediation](./12-causal-mediation/) *(overview)* | Not *did* D affect Y, but *why* — decompose into direct (NDE) and indirect-through-the-mediator (NIE) effects. Treacherous: you randomized D but **not the mediator M**, so identifying the NIE needs an untestable no-hidden-M-Y-confounder assumption. Never Baron-Kenny. | [`00-foundations.md`](../industry-playbook/00-foundations.md) |
 
 ### Lecture 2 chapters
 
