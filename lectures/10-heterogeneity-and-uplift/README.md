@@ -79,6 +79,7 @@ to.
 | **10.1** | [Causal Forests & CATE](./10.1-causal-forests.md) | How a causal tree splits (both arms in every leaf), honesty, local centering / DML, the min-leaf constraint | You need per-user effect estimates |
 | **10.2** | [Uplift & Targeting](./10.2-uplift-and-targeting.md) | The quadrant, the sure-things trap (the telecom probe), ROI-threshold targeting, Qini / AUUC evaluation | You have a budget and must choose whom to treat |
 | **10.3** | [Policy Learning](./10.3-policy-learning.md) | From black-box scores to interpretable rules: single honest tree vs. surrogate policy tree; deploying an IF/ELSE | The business needs a rule, not a model |
+| **10.4** | [Meta-Learners](./10.4-meta-learners.md) | S/T/X/R/DR — architectural recipes turning any ML into a CATE estimator; the two failure modes (extrapolation, unobserved confounding); the selection matrix | You want to use XGBoost/LightGBM for uplift |
 
 ---
 
