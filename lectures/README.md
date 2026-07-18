@@ -63,6 +63,7 @@ for you.** Five parts, from most-designed to least.
 | 2.4 | [Geo Experiments & iROAS](./02-experimentation/2.4-geo-experiments.md) | iROAS **is** a Wald ratio — a local derivative, not an average return. 210 DMAs are worth ~13 effective units. |
 | 2.5 | [Switchbacks](./02-experimentation/2.5-switchbacks.md) | The window must exceed the washout. Optimal designs throw away most of the data, and that's correct. |
 | 2.6 | [Ramp-Up & Bandits](./02-experimentation/2.6-ramp-up-and-bandits.md) | Change enrolled traffic freely; change the T:C ratio never. A homogeneous +1.0 effect reads as +4.81 if you break that rule. |
+| 2.7 | [Confounded Feedback Loops](./02-experimentation/2.7-confounded-feedback-loops.md) | Recommender logs confound quality with placement (verified: naive reads 3.0 for a true 2.0). A 1% randomized holdback recovers the truth; freezing it leaks position bias into "quality" (1.99 vs true 1.0) → a popularity death spiral. |
 
 ### Lecture 3 chapters
 

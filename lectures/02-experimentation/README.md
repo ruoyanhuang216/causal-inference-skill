@@ -97,6 +97,7 @@ the ambition point the same direction.
 | **2.4** | [Geo Experiments & iROAS](./2.4-geo-experiments.md) | DMAs, bleed, buffer donuts, virtual DMAs, incrementality | Marketing spend, offline media, marketplaces |
 | **2.5** | [Switchbacks](./2.5-switchbacks.md) | Time-slicing, carryover, washout math, optimal window derivation | Shared-resource interference in a single market |
 | **2.6** | [Ramp-Up, Epoch-Conditioning & Bandits](./2.6-ramp-up-and-bandits.md) | Time-confounded ramps, Simpson's paradox, the golden rule, MAB lock-in | Any experiment whose traffic allocation changed mid-flight |
+| **2.7** | [Confounded Feedback Loops & Alternating Optimization](./2.7-confounded-feedback-loops.md) | Rankers confound quality with placement in their own logs; a 1% randomized holdback + alternating optimization quarantines it | Estimating placement/ranking effects in a logged recommender |
 
 ---
 
